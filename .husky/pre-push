@@ -1,0 +1,40 @@
+#!/bin/sh
+
+echo "🔍 Running pre-push hook..."
+
+. "$(dirname "$0")/pnpm.sh"
+
+base_branch=""
+for candidate in origin/main origin/master main master; do
+  if git rev-parse --verify "$candidate" >/dev/null 2>&1; then
+    base_branch="$candidate"
+    break
+  fi
+done
+
+if [ -n "$base_branch" ]; then
+  files_changed=$(git diff --name-only "$base_branch"...HEAD 2>/dev/null || true)
+
+  if echo "$files_changed" | grep -qE '^(package\.json|pnpm-lock\.yaml)$'; then
+    echo "📦 Dependencies changed. Running pnpm install..."
+    pnpm install --frozen-lockfile
+  fi
+fi
+
+echo "🏗️ Running build..."
+pnpm build
+
+if [ $? -ne 0 ]; then
+  echo "❌ Build failed. Push aborted."
+  exit 1
+fi
+
+echo "➡️ Running type check..."
+pnpm typecheck
+
+if [ $? -ne 0 ]; then
+  echo "❌ Type check failed. Push aborted."
+  exit 1
+fi
+
+echo "✅ Build and checks passed. Proceeding with push..."
