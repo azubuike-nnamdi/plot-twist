@@ -62,8 +62,8 @@ test("three accounts can finish a short room and rematch", async ({ browser }) =
   await hostPage.goto("/create")
   await hostPage.getByLabel("Room name").fill(`Night ${stamp}`)
   await hostPage.getByRole("checkbox").first().check()
-  await hostPage.getByLabel("Rounds").selectOption("3")
-  await hostPage.getByRole("button", { name: "Generate room and enter lobby" }).click()
+  await hostPage.getByRole("radio", { name: /Quick Sprint/ }).check()
+  await hostPage.getByRole("button", { name: /Generate room/i }).click()
   await expect(hostPage).toHaveURL(/\/room\//)
   const code = new URL(hostPage.url()).pathname.split("/").pop() ?? ""
 
