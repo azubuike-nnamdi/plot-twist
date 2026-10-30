@@ -1,0 +1,21 @@
+{
+  "name": "PlotTwist",
+  "short_name": "PlotTwist",
+  "description": "Drop secret answers. Guess the author. A social party game for private rooms.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#100d1d",
+  "theme_color": "#100d1d",
+  "icons": [
+    {
+      "src": "/icon",
+      "sizes": "32x32",
+      "type": "image/png"
+    },
+    {
+      "src": "/apple-icon",
+      "sizes": "180x180",
+      "type": "image/png"
+    }
+  ]
+}
