@@ -8,6 +8,12 @@ import { chooseNextHost, canTransitionRoom, canTransitionRound } from "@/feature
 import { buildRoomView, type ViewInput } from "@/features/rooms/view"
 import { guessesToScore, pointsForGuess } from "@/features/scoring/score"
 import { readServerEnv } from "@/lib/env-schema"
+import {
+  ANSWER_TIMERS,
+  ROUND_CHOICES,
+  estimateSessionMinutes,
+  guessTimerFor,
+} from "@/lib/game/options"
 import { safeNextPath } from "@/lib/security/next-path"
 
 const env = {
@@ -194,6 +200,22 @@ describe("anonymity", () => {
     expect(view.answers[0]).not.toHaveProperty("author")
     expect(JSON.stringify(view.answers)).not.toContain("player-b")
     expect(JSON.stringify(view.answers)).not.toContain("Bea")
+  })
+})
+
+describe("session length", () => {
+  it("keeps every setup at or under 10 minutes", () => {
+    for (const rounds of ROUND_CHOICES) {
+      for (const answerTimer of ANSWER_TIMERS) {
+        const seconds = rounds * (answerTimer + guessTimerFor(answerTimer))
+        expect(seconds).toBeLessThanOrEqual(10 * 60)
+        expect(estimateSessionMinutes(rounds, answerTimer)).toBeLessThanOrEqual(10)
+      }
+    }
+  })
+
+  it("tops out at 10 minutes for the longest match", () => {
+    expect(estimateSessionMinutes(8, 45)).toBe(10)
   })
 })
 
