@@ -12,7 +12,7 @@ const phases = [
     label: "Phase 1: Submit",
     title: "Secret prompt drops",
     body: "Every player gets the same prompt and writes one anonymous answer before the timer ends.",
-    note: "30–90 second answer timer",
+    note: "20–45 second answer timer",
     chip: "bg-[#9b7bff]/15 text-[#9b7bff]",
   },
   {
