@@ -4,6 +4,7 @@ import { PrismaClient } from "@prisma/client"
 
 const globalForPrisma = globalThis as unknown as {
   prisma?: PrismaClient
+  prismaUrl?: string
 }
 
 function databaseUrl() {
@@ -11,20 +12,28 @@ function databaseUrl() {
   if (!url) {
     throw new Error("DATABASE_URL is not set")
   }
-  return url
+  if (/[?&]connect_timeout=/.test(url)) return url
+  const separator = url.includes("?") ? "&" : "?"
+  return `${url}${separator}connect_timeout=30`
 }
 
-function createPrismaClient() {
+function createPrismaClient(url: string) {
   return new PrismaClient({
-    datasources: { db: { url: databaseUrl() } },
+    datasources: { db: { url } },
     log: process.env.NODE_ENV === "development" ? ["error", "warn"] : ["error"],
   })
 }
 
-export const prisma = globalForPrisma.prisma ?? createPrismaClient()
-
-if (process.env.NODE_ENV !== "production") {
-  globalForPrisma.prisma = prisma
+function getPrismaClient() {
+  const url = databaseUrl()
+  if (!globalForPrisma.prisma || globalForPrisma.prismaUrl !== url) {
+    void globalForPrisma.prisma?.$disconnect()
+    globalForPrisma.prisma = createPrismaClient(url)
+    globalForPrisma.prismaUrl = url
+  }
+  return globalForPrisma.prisma
 }
+
+export const prisma = getPrismaClient()
 
 export type Db = PrismaClient | Parameters<Parameters<PrismaClient["$transaction"]>[0]>[0]
