@@ -1,0 +1,308 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum RoomStatus {
+  WAITING
+  IN_PROGRESS
+  COMPLETED
+  CLOSED
+}
+
+enum RoundStatus {
+  PENDING
+  ANSWERING
+  GUESSING
+  REVEAL
+  COMPLETED
+}
+
+enum PlayerStatus {
+  JOINED
+  READY
+  LEFT
+  REMOVED
+}
+
+enum ReportStatus {
+  OPEN
+  DISMISSED
+  ACTIONED
+}
+
+enum ReportTarget {
+  ANSWER
+  ROOM
+  USER
+}
+
+model User {
+  id              String    @id
+  name            String
+  email           String    @unique
+  emailVerified   Boolean   @default(false)
+  image           String?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  username        String?   @unique
+  displayUsername String?
+  role            String    @default("USER")
+  avatar          String?
+  status          String    @default("ACTIVE")
+  sessions        Session[]
+  accounts        Account[]
+  hostedRooms     Room[]    @relation("RoomHost")
+  memberships     RoomPlayer[]
+  reportsFiled    Report[]  @relation("ReportAuthor")
+  reportsReviewed Report[]  @relation("ReportReviewer")
+  auditLogs       AuditLog[]
+
+  @@index([status])
+  @@index([role])
+}
+
+model Session {
+  id        String   @id
+  expiresAt DateTime
+  token     String   @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  ipAddress String?
+  userAgent String?
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model Account {
+  id                    String    @id
+  accountId             String
+  providerId            String
+  userId                String
+  user                  User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  accessToken           String?
+  refreshToken          String?
+  idToken               String?
+  accessTokenExpiresAt  DateTime?
+  refreshTokenExpiresAt DateTime?
+  scope                 String?
+  password              String?
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+
+  @@unique([providerId, accountId])
+  @@index([userId])
+}
+
+model Verification {
+  id         String   @id
+  identifier String
+  value      String
+  expiresAt  DateTime
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@index([identifier])
+}
+
+model Category {
+  id          String     @id @default(cuid())
+  name        String     @unique
+  description String
+  isActive    Boolean    @default(true)
+  isAdult     Boolean    @default(false)
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+  questions   Question[]
+  rooms       RoomCategory[]
+}
+
+model Question {
+  id         String   @id @default(cuid())
+  text       String
+  categoryId String
+  category   Category @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+  difficulty String   @default("NORMAL")
+  isActive   Boolean  @default(true)
+  isAdult    Boolean  @default(false)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  rounds     Round[]
+
+  @@index([categoryId, isActive])
+}
+
+model Room {
+  id             String     @id @default(cuid())
+  roomCode       String     @unique
+  name           String
+  hostId         String
+  host           User       @relation("RoomHost", fields: [hostId], references: [id], onDelete: Restrict)
+  status         RoomStatus @default(WAITING)
+  visibility     String     @default("PRIVATE")
+  maxPlayers     Int
+  totalRounds    Int
+  currentRound   Int        @default(0)
+  answerTimer    Int
+  guessingTimer  Int
+  cleanFilter    Boolean    @default(false)
+  createdAt      DateTime   @default(now())
+  updatedAt      DateTime   @updatedAt
+  expiresAt      DateTime
+  players        RoomPlayer[]
+  categories     RoomCategory[]
+  rounds         Round[]
+
+  @@index([status])
+  @@index([hostId])
+  @@index([expiresAt])
+}
+
+model RoomCategory {
+  roomId     String
+  categoryId String
+  room       Room     @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  category   Category @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+
+  @@id([roomId, categoryId])
+}
+
+model RoomPlayer {
+  id          String       @id @default(cuid())
+  roomId      String
+  room        Room         @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  userId      String
+  user        User         @relation(fields: [userId], references: [id], onDelete: Restrict)
+  displayName String
+  avatar      String
+  playerRole  String       @default("PLAYER")
+  status      PlayerStatus @default(JOINED)
+  joinedAt    DateTime     @default(now())
+  lastSeenAt  DateTime     @default(now())
+  score       Int          @default(0)
+  answers     Answer[]
+  guesses     Guess[]      @relation("Guesser")
+  accused     Guess[]      @relation("Accused")
+  reactions   Reaction[]
+
+  @@unique([roomId, userId])
+  @@index([roomId, status])
+}
+
+model Round {
+  id              String      @id @default(cuid())
+  roomId          String
+  room            Room        @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  roundNumber     Int
+  questionId      String
+  question        Question    @relation(fields: [questionId], references: [id], onDelete: Restrict)
+  status          RoundStatus @default(PENDING)
+  phaseDeadlineAt DateTime?
+  startedAt       DateTime?
+  completedAt     DateTime?
+  answers         Answer[]
+  reactions       Reaction[]
+
+  @@unique([roomId, roundNumber])
+  @@index([roomId, status])
+}
+
+model Answer {
+  id          String   @id @default(cuid())
+  roundId     String
+  round       Round    @relation(fields: [roundId], references: [id], onDelete: Cascade)
+  playerId    String
+  player      RoomPlayer @relation(fields: [playerId], references: [id], onDelete: Restrict)
+  answerText  String
+  sortKey     Int      @default(0)
+  removed     Boolean  @default(false)
+  submittedAt DateTime @default(now())
+  guesses     Guess[]
+
+  @@unique([roundId, playerId])
+  @@index([roundId, sortKey])
+}
+
+model Guess {
+  id              String   @id @default(cuid())
+  answerId        String
+  answer          Answer   @relation(fields: [answerId], references: [id], onDelete: Cascade)
+  guesserId       String
+  guesser         RoomPlayer @relation("Guesser", fields: [guesserId], references: [id], onDelete: Restrict)
+  guessedPlayerId String
+  guessedPlayer   RoomPlayer @relation("Accused", fields: [guessedPlayerId], references: [id], onDelete: Restrict)
+  isCorrect       Boolean?
+  pointsAwarded   Int?
+  createdAt       DateTime @default(now())
+
+  @@unique([answerId, guesserId])
+  @@index([guesserId])
+}
+
+model Reaction {
+  id        String     @id @default(cuid())
+  roundId   String
+  round     Round      @relation(fields: [roundId], references: [id], onDelete: Cascade)
+  playerId  String
+  player    RoomPlayer @relation(fields: [playerId], references: [id], onDelete: Cascade)
+  emoji     String
+  createdAt DateTime   @default(now())
+
+  @@index([roundId])
+}
+
+model Report {
+  id         String       @id @default(cuid())
+  reporterId String
+  reporter   User         @relation("ReportAuthor", fields: [reporterId], references: [id], onDelete: Restrict)
+  targetType ReportTarget
+  targetId   String
+  reason     String
+  status     ReportStatus @default(OPEN)
+  reviewedBy String?
+  reviewer   User?        @relation("ReportReviewer", fields: [reviewedBy], references: [id], onDelete: SetNull)
+  reviewedAt DateTime?
+  createdAt  DateTime     @default(now())
+
+  @@index([status, createdAt])
+  @@index([targetType, targetId])
+}
+
+model AuditLog {
+  id         String   @id @default(cuid())
+  actorId    String?
+  actor      User?    @relation(fields: [actorId], references: [id], onDelete: SetNull)
+  action     String
+  targetType String
+  targetId   String
+  metadata   Json?
+  createdAt  DateTime @default(now())
+
+  @@index([createdAt])
+  @@index([targetType, targetId])
+}
+
+model PlatformSetting {
+  id                    String @id @default("default")
+  defaultRounds         Int    @default(5)
+  defaultAnswerTimer    Int    @default(60)
+  defaultGuessingTimer  Int    @default(45)
+  defaultMaxPlayers     Int    @default(8)
+  roomLifetimeMinutes   Int    @default(180)
+  minPlayers            Int    @default(3)
+}
+
+model RateLimitBucket {
+  id          String   @id @default(cuid())
+  key         String
+  windowStart DateTime
+  count       Int      @default(0)
+
+  @@unique([key, windowStart])
+}
