@@ -1,0 +1,7 @@
+#!/bin/sh
+
+echo "🔍 Running commit-msg hook..."
+
+. "$(dirname "$0")/pnpm.sh"
+
+pnpm exec commitlint --edit "$1"
