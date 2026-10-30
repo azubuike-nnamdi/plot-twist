@@ -166,26 +166,28 @@ function Lobby({ view, invite }: { view: RoomView; invite: string }) {
               </p>
             </div>
           </div>
-          <div className="mt-5 flex flex-col gap-4 rounded-2xl border border-[#302d41] bg-[#100d1d] p-4 sm:flex-row sm:items-center sm:justify-between">
-            <div>
-              <p className="text-[11px] font-semibold tracking-[0.16em] text-[#afadba] uppercase">
-                Room code
-              </p>
-              <p className="mt-1 flex flex-wrap items-center gap-2 font-display text-3xl font-bold tracking-wide text-[#f6f6fa] sm:text-4xl">
-                {formatRoomCode(view.code)}
-                <span className="rounded-full bg-[#ffd166] px-2 py-0.5 font-sans text-[10px] font-bold text-[#100d1d]">
-                  CODE
-                </span>
-              </p>
+          <div className="@container/code mt-5 rounded-2xl border border-[#302d41] bg-[#100d1d] p-4">
+            <div className="flex flex-col gap-4 @min-[36rem]/code:flex-row @min-[36rem]/code:items-center @min-[36rem]/code:justify-between">
+              <div className="min-w-0">
+                <p className="text-[11px] font-semibold tracking-[0.16em] text-[#afadba] uppercase">
+                  Room code
+                </p>
+                <p className="mt-1 flex flex-wrap items-center gap-2 font-display text-3xl font-bold tracking-wide text-[#f6f6fa] @min-[36rem]/code:text-4xl">
+                  {formatRoomCode(view.code)}
+                  <span className="rounded-full bg-[#ffd166] px-2 py-0.5 font-sans text-[10px] font-bold text-[#100d1d]">
+                    CODE
+                  </span>
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={handleCopyInvite}
+                className="inline-flex h-11 w-full shrink-0 items-center justify-center gap-2 rounded-xl bg-[#9b7bff] px-4 text-sm font-semibold whitespace-nowrap text-[#100d1d] @min-[36rem]/code:w-auto"
+              >
+                <Copy aria-hidden className="size-4" />
+                {notice?.text === "Invite link copied" ? "Copied" : "Copy invite link"}
+              </button>
             </div>
-            <button
-              type="button"
-              onClick={handleCopyInvite}
-              className="inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-[#9b7bff] px-4 text-sm font-semibold text-[#100d1d]"
-            >
-              <Copy aria-hidden className="size-4" />
-              {notice?.text === "Invite link copied" ? "Copied" : "Copy invite link"}
-            </button>
           </div>
           <div className="mt-4 flex flex-wrap gap-2 text-xs text-[#afadba]">
             <span className="rounded-full border border-[#302d41] px-3 py-1">
