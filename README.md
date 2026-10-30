@@ -11,7 +11,7 @@ A correct guess is worth 100 points. A wrong guess, a missed guess, and the auth
 3. **Guesses.** Answers are shuffled. Players vote for the author of each answer and cannot vote for themselves.
 4. **Reveal.** Authors are shown, scores update, and the host moves to the next round.
 
-Rooms can run 3, 5, or 8 rounds, with room sizes of 6, 8, 12, or 16. Answer timers are 30–90 seconds. Guess timers are 30–60 seconds. Reactions are cosmetic and do not change the score.
+Rooms can run 3, 5, or 8 rounds, with room sizes of 6, 8, 12, or 16. Answer timers are 20–45 seconds and guess timers are 15–30 seconds, so a match stays within about 10 minutes. Reactions are cosmetic and do not change the score.
 
 ## Stack
 
