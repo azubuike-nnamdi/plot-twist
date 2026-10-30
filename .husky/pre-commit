@@ -1,0 +1,14 @@
+#!/bin/sh
+
+echo "🔍 Running pre-commit hook..."
+
+. "$(dirname "$0")/pnpm.sh"
+
+files=$(git diff --cached --name-only)
+
+if [ -n "$files" ]; then
+  echo "🚀 Running lint for staged files..."
+  pnpm lint
+else
+  echo "✅ No files staged for commit."
+fi
