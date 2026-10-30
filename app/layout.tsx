@@ -22,7 +22,7 @@ const mono = JetBrains_Mono({
   variable: "--font-mono",
 })
 
-const description =
+const siteDescription =
   "Drop secret answers. Guess the author. A social party game for private rooms."
 
 export const dynamic = "force-dynamic"
@@ -33,22 +33,53 @@ export const metadata: Metadata = {
     default: "PlotTwist",
     template: "%s | PlotTwist",
   },
-  description,
+  description: siteDescription,
+  keywords: [
+    "PlotTwist",
+    "party game",
+    "anonymous answers",
+    "guess the author",
+    "private rooms",
+    "Next.js",
+  ],
+  authors: [{ name: "Nnamdi Azubuike", url: "https://www.nnamdiazubuike.dev" }],
+  creator: "Nnamdi Azubuike",
+  publisher: "PlotTwist",
+  robots: {
+    index: true,
+    follow: true,
+  },
   alternates: { canonical: "/" },
   openGraph: {
-    type: "website",
-    locale: "en_US",
+    title: "PlotTwist",
+    description: siteDescription,
     url: "/",
     siteName: "PlotTwist",
-    title: "PlotTwist",
-    description,
+    images: [
+      {
+        url: "/opengraph-image",
+        width: 1200,
+        height: 630,
+        alt: "PlotTwist. Drop secret answers. Guess the author.",
+      },
+    ],
+    locale: "en_US",
+    type: "website",
   },
   twitter: {
     card: "summary_large_image",
     title: "PlotTwist",
-    description,
+    description: siteDescription,
+    images: ["/opengraph-image"],
   },
-  robots: { index: true, follow: true },
+  icons: {
+    icon: [{ url: "/icon", sizes: "32x32", type: "image/png" }],
+    apple: [{ url: "/apple-icon", sizes: "180x180", type: "image/png" }],
+  },
+  manifest: "/manifest.json",
+  verification: {
+    google: "ZnbKzL4y7SZDMOuyp5S-FGRdAlkQ_xE6rzyx8jWpXgA",
+  },
 }
 
 export default function RootLayout({
