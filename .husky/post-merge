@@ -1,0 +1,26 @@
+#!/bin/sh
+
+echo "🔍 Running post-merge hook..."
+
+. "$(dirname "$0")/pnpm.sh"
+
+changed_files="$(git diff-tree -r --name-only --no-commit-id ORIG_HEAD HEAD 2>/dev/null)"
+deps_changed="$(echo "$changed_files" | grep -E '^(package\.json|pnpm-lock\.yaml)$' || true)"
+
+if [ -n "$deps_changed" ]; then
+  echo "📦 Dependency files changed:"
+  echo "$deps_changed" | sed 's/^/   - /'
+  echo "📦 Installing dependencies with strict lockfile sync..."
+
+  if ! pnpm install --frozen-lockfile; then
+    echo "❌ pnpm install failed at $(date -u '+%Y-%m-%d %H:%M:%S GMT')."
+    echo "   Please resolve lockfile or dependency issues before continuing."
+    exit 1
+  fi
+
+  echo "✅ Dependencies are up to date."
+else
+  echo "✅ No dependency file changes detected. Skipping install."
+fi
+
+echo "🎉 Post-merge checks completed successfully at $(date -u '+%Y-%m-%d %H:%M:%S GMT')."
