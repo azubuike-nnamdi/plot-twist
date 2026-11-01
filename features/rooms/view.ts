@@ -43,6 +43,9 @@ export type ViewInput = {
   status: RoomView["status"]
   hostId: string
   viewerUserId: string
+  viewerIsGuest?: boolean
+  categoryIds?: string[]
+  cleanFilter?: boolean
   maxPlayers: number
   totalRounds: number
   currentRound: number
@@ -55,9 +58,18 @@ export type ViewInput = {
     deadlineAt: string | null
     question: string
     categoryName: string
+    askedBy?: string | null
+    isReplay?: boolean
     answers: Answer[]
     reactions: { emoji: string; playerId: string }[]
   }
+  prompts?: {
+    id: string
+    text: string
+    authorName: string
+    status: "PENDING" | "ACCEPTED"
+    isYours: boolean
+  }[]
   history: {
     guesserId: string
     isCorrect: boolean | null
@@ -160,6 +172,7 @@ export function buildRoomView(input: ViewInput): RoomView {
     status: input.status,
     phase,
     youAreHost: input.hostId === input.viewerUserId,
+    youAreGuest: input.viewerIsGuest === true,
     yourPlayerId: you.id,
     yourDisplayName: you.displayName,
     yourScore: you.score,
@@ -174,6 +187,11 @@ export function buildRoomView(input: ViewInput): RoomView {
         ? (round?.deadlineAt ?? null)
         : null,
     categories: input.categories,
+    prompts: input.prompts ?? [],
+    askedBy: input.round?.askedBy ?? null,
+    isReplay: input.round?.isReplay === true && phase !== "LOBBY",
+    categoryIds: input.categoryIds ?? [],
+    cleanFilter: input.cleanFilter === true,
     players: input.players.filter(active).map((player) => ({
       id: player.id,
       displayName: player.displayName,
