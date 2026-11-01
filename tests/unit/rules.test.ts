@@ -4,7 +4,13 @@ import { answerError } from "@/features/answers/rules"
 import { guessError } from "@/features/guesses/rules"
 import { formatRoomCode, parseRoomCode } from "@/features/rooms/codes"
 import { presentAnswer } from "@/features/rooms/present"
-import { chooseNextHost, canTransitionRoom, canTransitionRound } from "@/features/rooms/transitions"
+import { choosePrompt } from "@/features/rooms/prompts"
+import {
+  chooseNextHost,
+  canTransitionRoom,
+  canTransitionRound,
+  phaseNeedsAdvance,
+} from "@/features/rooms/transitions"
 import { buildRoomView, type ViewInput } from "@/features/rooms/view"
 import { guessesToScore, pointsForGuess } from "@/features/scoring/score"
 import { readServerEnv } from "@/lib/env-schema"
@@ -76,6 +82,98 @@ describe("transitions and host", () => {
         now
       )
     ).toBe("host")
+  })
+
+  it("does not hand the room to a guest", () => {
+    const now = 200_000
+    expect(
+      chooseNextHost(
+        [
+          { userId: "host", joinedAt: 1, lastSeenAt: now - 120_000, status: "LEFT" },
+          { userId: "guest", joinedAt: 2, lastSeenAt: now, status: "JOINED", canHost: false },
+          { userId: "member", joinedAt: 3, lastSeenAt: now, status: "JOINED", canHost: true },
+        ],
+        "host",
+        now
+      )
+    ).toBe("member")
+  })
+
+  it("closes the host seat when a departed host has only guests left", () => {
+    const now = 200_000
+    expect(
+      chooseNextHost(
+        [
+          { userId: "host", joinedAt: 1, lastSeenAt: now, status: "LEFT" },
+          { userId: "guest", joinedAt: 2, lastSeenAt: now, status: "READY", canHost: false },
+        ],
+        "host",
+        now
+      )
+    ).toBeNull()
+  })
+
+  it("keeps a live host when the only other players are guests", () => {
+    const now = 200_000
+    expect(
+      chooseNextHost(
+        [
+          { userId: "host", joinedAt: 1, lastSeenAt: now - 120_000, status: "JOINED" },
+          { userId: "guest", joinedAt: 2, lastSeenAt: now, status: "JOINED", canHost: false },
+        ],
+        "host",
+        now
+      )
+    ).toBe("host")
+  })
+})
+
+describe("phase advance", () => {
+  const players = ["a", "b"]
+  const base = {
+    status: "IN_PROGRESS" as const,
+    roundStatus: "ANSWERING" as const,
+    deadlineAt: 100,
+    now: 50,
+    activePlayerIds: players,
+    answers: [] as { playerId: string; guesses: { guesserId: string }[] }[],
+  }
+
+  it("waits while answers are still open", () => {
+    expect(phaseNeedsAdvance(base)).toBe(false)
+  })
+
+  it("advances when the answer deadline has passed", () => {
+    expect(phaseNeedsAdvance({ ...base, now: 100 })).toBe(true)
+  })
+
+  it("advances when every active player has answered", () => {
+    expect(
+      phaseNeedsAdvance({
+        ...base,
+        answers: [
+          { playerId: "a", guesses: [] },
+          { playerId: "b", guesses: [] },
+        ],
+      })
+    ).toBe(true)
+  })
+
+  it("advances guessing when every other answer has a vote", () => {
+    expect(
+      phaseNeedsAdvance({
+        ...base,
+        roundStatus: "GUESSING",
+        answers: [
+          { playerId: "a", guesses: [{ guesserId: "b" }] },
+          { playerId: "b", guesses: [{ guesserId: "a" }] },
+        ],
+      })
+    ).toBe(true)
+  })
+
+  it("leaves a waiting room alone", () => {
+    expect(phaseNeedsAdvance({ ...base, status: "WAITING" })).toBe(false)
   })
 })
 
@@ -200,6 +298,34 @@ describe("anonymity", () => {
     expect(view.answers[0]).not.toHaveProperty("author")
     expect(JSON.stringify(view.answers)).not.toContain("player-b")
     expect(JSON.stringify(view.answers)).not.toContain("Bea")
+  })
+})
+
+describe("prompt draw", () => {
+  const first = () => 0
+
+  it("uses a player question before any pack card", () => {
+    expect(
+      choosePrompt(
+        { playerPromptIds: ["asked"], unseenPackIds: ["fresh"], seenPackIds: ["old"] },
+        first
+      )
+    ).toEqual({ kind: "player", id: "asked" })
+  })
+
+  it("uses an unseen pack card when nobody asked a question", () => {
+    expect(
+      choosePrompt(
+        { playerPromptIds: [], unseenPackIds: ["fresh"], seenPackIds: ["old"] },
+        first
+      )
+    ).toEqual({ kind: "pack", id: "fresh", isReplay: false })
+  })
+
+  it("replays a pack card only after the unseen pile is empty", () => {
+    expect(
+      choosePrompt({ playerPromptIds: [], unseenPackIds: [], seenPackIds: ["old"] }, first)
+    ).toEqual({ kind: "pack", id: "old", isReplay: true })
   })
 })
 
