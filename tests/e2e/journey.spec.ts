@@ -18,19 +18,14 @@ test("landing, login, and the share image stay public", async ({ page }) => {
   expect(image.headers()["content-type"]).toContain("image/png")
 })
 
-test("a logged-out invite returns to the room after an account exists", async ({
+test("a logged-out friend can open the join form, and hosting still asks for an account", async ({
   page,
 }) => {
-  const stamp = Date.now().toString().slice(-8)
   await page.goto("/join?code=ABCDEFGH")
+  await expect(page.getByRole("heading", { name: "Join a party room" })).toBeVisible()
+  await expect(page.getByLabel("Display name")).toBeVisible()
+  await page.goto("/create")
   await expect(page).toHaveURL(/\/login\?next=/)
-  await page.goto("/register")
-  await page.getByLabel("Username").fill(`player${stamp}`)
-  await page.getByLabel("Email").fill(`player${stamp}@example.com`)
-  await page.getByLabel("Password", { exact: true }).fill("password123")
-  await page.getByLabel("Confirm password").fill("password123")
-  await page.getByRole("button", { name: "Create account and play" }).click()
-  await expect(page).toHaveURL("/")
 })
 
 test("three accounts can finish a short room and rematch", async ({ browser }) => {
