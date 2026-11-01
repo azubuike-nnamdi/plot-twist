@@ -1,11 +1,12 @@
 {
   "name": "plot-twist",
-  "version": "0.0.4",
+  "version": "0.0.5",
   "type": "module",
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "next build",
+    "build": "prisma generate && next build",
+    "postinstall": "prisma generate",
     "start": "next start",
     "lint": "eslint",
     "format": "prettier --write \"**/*.{ts,tsx}\"",
