@@ -58,7 +58,7 @@ const features = [
   {
     icon: Users,
     title: "3 to 16 players",
-    body: "Start once at least three accounts are in the room. Capacity can go up to 16.",
+    body: "Start once at least three players are in the room. Capacity can go up to 16.",
     tone: "bg-[#ffd166]/15 text-[#ffd166]",
   },
 ]
@@ -101,7 +101,7 @@ export default function HomePage() {
                 <JoinCodeForm />
               </div>
               <p className="mt-4 text-sm text-muted-foreground">
-                No download. An account is required to host or join.
+                No download. An account is required to host, not to play.
               </p>
             </div>
             <SampleRound />
