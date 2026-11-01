@@ -16,6 +16,7 @@ export type CurrentUser = {
   role: string
   avatar: string | null
   status: string
+  isAnonymous: boolean
 }
 
 export async function getCurrentUser(): Promise<CurrentUser | null> {
@@ -32,6 +33,7 @@ export async function getCurrentUser(): Promise<CurrentUser | null> {
     role: "role" in user ? String(user.role) : "USER",
     avatar: "avatar" in user ? ((user.avatar as string | null) ?? null) : null,
     status: "status" in user ? String(user.status) : "ACTIVE",
+    isAnonymous: "isAnonymous" in user ? user.isAnonymous === true : false,
   }
 }
 
