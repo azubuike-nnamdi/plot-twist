@@ -32,7 +32,7 @@ function runRoomTransaction<T>(fn: (tx: Tx) => Promise<T>) {
   return prisma.$transaction(fn, roomTransaction)
 }
 
-const roomInclude = {
+const roomInclude = Prisma.validator<Prisma.RoomInclude>()({
   players: { include: { user: { select: { isAnonymous: true } } } },
   categories: { include: { category: true } },
   rounds: {
@@ -48,7 +48,7 @@ const roomInclude = {
     include: { player: { select: { displayName: true, userId: true } } },
     orderBy: { createdAt: "asc" },
   },
-} satisfies Prisma.RoomInclude
+})
 
 type LoadedRoom = Prisma.RoomGetPayload<{ include: typeof roomInclude }>
 
@@ -106,7 +106,7 @@ async function lockRoom(tx: Tx, roomId: string) {
   if (rows.length !== 1) throw new AppError("Room not found.", "NOT_FOUND")
 }
 
-async function loadRoom(db: Tx | PrismaClient, roomId: string) {
+async function loadRoom(db: Tx | PrismaClient, roomId: string): Promise<LoadedRoom> {
   const room = await db.room.findUnique({
     where: { id: roomId },
     include: roomInclude,
@@ -658,8 +658,8 @@ export async function startGame(hostId: string, code: string) {
       data: {
         roomId: room.id,
         roundNumber: 1,
-        questionId: drawn.questionId,
-        roomPromptId: drawn.roomPromptId,
+        questionId: drawn.questionId ?? undefined,
+        roomPromptId: drawn.roomPromptId ?? undefined,
         isReplay: drawn.isReplay,
         status: "ANSWERING",
         phaseDeadlineAt: new Date(now.getTime() + room.answerTimer * 1000),
@@ -799,8 +799,8 @@ export async function nextRound(hostId: string, code: string) {
       data: {
         roomId: room.id,
         roundNumber: room.currentRound + 1,
-        questionId: drawn.questionId,
-        roomPromptId: drawn.roomPromptId,
+        questionId: drawn.questionId ?? undefined,
+        roomPromptId: drawn.roomPromptId ?? undefined,
         isReplay: drawn.isReplay,
         status: "ANSWERING",
         phaseDeadlineAt: new Date(now.getTime() + room.answerTimer * 1000),
