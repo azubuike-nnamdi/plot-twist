@@ -3,7 +3,9 @@ import "server-only"
 import { betterAuth } from "better-auth"
 import { prismaAdapter } from "better-auth/adapters/prisma"
 import { nextCookies } from "better-auth/next-js"
-import { username } from "better-auth/plugins"
+import { anonymous, username } from "better-auth/plugins"
+
+import { transferGuestSeat } from "@/features/auth/guest-transfer"
 
 import { prisma } from "@/lib/db/prisma"
 import { env } from "@/lib/env"
@@ -76,5 +78,15 @@ export const auth = betterAuth({
       secure: process.env.NODE_ENV === "production",
     },
   },
-  plugins: [username(), nextCookies()],
+  plugins: [
+    username(),
+    anonymous({
+      emailDomainName: "guest.plottwist.invalid",
+      disableDeleteAnonymousUser: true,
+      onLinkAccount: async ({ anonymousUser, newUser }) => {
+        await transferGuestSeat(anonymousUser.user.id, newUser.user.id)
+      },
+    }),
+    nextCookies(),
+  ],
 })
