@@ -46,6 +46,11 @@ export type HostCandidate = {
   joinedAt: number
   lastSeenAt: number
   status: "JOINED" | "READY" | "LEFT" | "REMOVED"
+  canHost?: boolean
+}
+
+function canTakeHost(player: HostCandidate) {
+  return player.canHost !== false
 }
 
 export function chooseNextHost(
@@ -54,15 +59,53 @@ export function chooseNextHost(
   now: number
 ) {
   const host = players.find((player) => player.userId === hostUserId)
-  const active = players
+  const eligible = players
     .filter(
-      (player) => player.status === "JOINED" || player.status === "READY"
+      (player) =>
+        (player.status === "JOINED" || player.status === "READY") &&
+        canTakeHost(player)
     )
     .sort((left, right) => left.joinedAt - right.joinedAt)
-  if (!host) return active[0]?.userId ?? null
+  if (!host) return eligible[0]?.userId ?? null
   const hostIsActive = host.status === "JOINED" || host.status === "READY"
   const hostIsStale = now - host.lastSeenAt > HOST_STALE_MS
   if (hostIsActive && !hostIsStale) return hostUserId
-  const replacement = active.find((player) => player.userId !== hostUserId)
-  return replacement?.userId ?? hostUserId
+  const replacement = eligible.find((player) => player.userId !== hostUserId)
+  if (replacement) return replacement.userId
+  const hostHasLeft = host.status === "LEFT" || host.status === "REMOVED"
+  if (hostHasLeft) return null
+  return hostUserId
+}
+
+export function phaseNeedsAdvance(input: {
+  status: RoomStatus
+  roundStatus: RoundStatus | null
+  deadlineAt: number | null
+  now: number
+  activePlayerIds: string[]
+  answers: { playerId: string; guesses: { guesserId: string }[] }[]
+}) {
+  if (input.status !== "IN_PROGRESS" || !input.roundStatus) return false
+  const timedOut = input.deadlineAt !== null && input.now >= input.deadlineAt
+  if (input.roundStatus === "ANSWERING") {
+    const everyoneAnswered =
+      input.activePlayerIds.length > 0 &&
+      input.activePlayerIds.every((playerId) =>
+        input.answers.some((answer) => answer.playerId === playerId)
+      )
+    return timedOut || everyoneAnswered
+  }
+  if (input.roundStatus === "GUESSING") {
+    const finished =
+      input.answers.length === 0 ||
+      input.activePlayerIds.every((playerId) =>
+        input.answers
+          .filter((answer) => answer.playerId !== playerId)
+          .every((answer) =>
+            answer.guesses.some((guess) => guess.guesserId === playerId)
+          )
+      )
+    return finished || timedOut
+  }
+  return false
 }

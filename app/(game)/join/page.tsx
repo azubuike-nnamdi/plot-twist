@@ -6,7 +6,7 @@ import { SiteFooter } from "@/components/layout/site-footer"
 import { SiteHeader } from "@/components/layout/site-header"
 import { previewRoom } from "@/features/rooms/engine"
 import { parseRoomCode } from "@/features/rooms/codes"
-import { requirePageUser } from "@/lib/auth/session"
+import { getCurrentUser } from "@/lib/auth/session"
 import { AppError } from "@/lib/errors"
 
 export const metadata: Metadata = { title: "Join room" }
@@ -16,7 +16,7 @@ export default async function JoinPage({
 }: {
   searchParams: Promise<{ code?: string }>
 }) {
-  const user = await requirePageUser("/join")
+  const user = await getCurrentUser()
   const params = await searchParams
   const code = params.code ? parseRoomCode(params.code) : ""
   let preview: Awaited<ReturnType<typeof previewRoom>> | null = null
@@ -35,10 +35,15 @@ export default async function JoinPage({
         <section className="rounded-[20px] border border-border bg-card p-6">
           <h1 className="font-display text-4xl font-bold">Join a party room</h1>
           <p className="mt-2 text-muted-foreground">
-            Enter the room code from your host. You need to be signed in, which you are.
+            Enter the room code from your host. A name is enough to play. An account is only required to host.
           </p>
           <div className="mt-6">
-            <JoinRoomForm code={code} defaultName={(user.username ?? user.name).slice(0, 18)} />
+            <JoinRoomForm
+              code={code}
+              defaultName={
+                user && !user.isAnonymous ? (user.username ?? user.name).slice(0, 18) : ""
+              }
+            />
           </div>
         </section>
         <aside className="rounded-[20px] border border-border bg-card p-6">

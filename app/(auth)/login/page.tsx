@@ -23,7 +23,7 @@ export default async function LoginPage({
           </p>
           <h1 className="font-display mt-2 text-3xl font-bold">Welcome back</h1>
           <p className="mt-2 text-sm text-muted-foreground">
-            Log in to host a room or join one with a code.
+            Log in to host a room. Friends can join with a name.
           </p>
           {params.error === "suspended" ? (
             <p className="mt-4 rounded-lg bg-red-500/10 px-3 py-2 text-sm text-red-300">

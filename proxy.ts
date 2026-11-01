@@ -7,13 +7,16 @@ function needsAccount(pathname: string) {
   return (
     pathname === "/create" ||
     pathname.startsWith("/create/") ||
-    pathname === "/join" ||
-    pathname.startsWith("/join/") ||
-    pathname === "/room" ||
-    pathname.startsWith("/room/") ||
     pathname === "/account" ||
     pathname.startsWith("/account/")
   )
+}
+
+function roomJoinRedirect(request: NextRequest, pathname: string) {
+  const code = pathname.split("/").filter(Boolean)[1] ?? ""
+  const url = new URL("/join", request.url)
+  if (code) url.searchParams.set("code", code)
+  return NextResponse.redirect(url)
 }
 
 export function proxy(request: NextRequest) {
@@ -26,6 +29,13 @@ export function proxy(request: NextRequest) {
     const url = new URL("/admin/login", request.url)
     url.searchParams.set("next", pathname)
     return NextResponse.redirect(url)
+  }
+
+  if (
+    !session &&
+    (pathname === "/room" || pathname.startsWith("/room/"))
+  ) {
+    return roomJoinRedirect(request, pathname)
   }
 
   if (!isAdmin && needsAccount(pathname) && !session) {

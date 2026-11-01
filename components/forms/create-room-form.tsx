@@ -565,7 +565,7 @@ export function CreateRoomForm({
 
         <aside className="grid gap-4 lg:sticky lg:top-6">
           <section className="overflow-hidden rounded-[24px] border border-white/10 bg-[#161222]">
-            <div className="h-1.5 bg-gradient-to-r from-[#ff6b8a] via-[#c084fc] to-[#f5c16c]" />
+            <div className="h-1.5 bg-linear-to-r from-[#ff6b8a] via-[#c084fc] to-[#f5c16c]" />
             <div className="p-5">
               <div className="flex items-center justify-between gap-3">
                 <p className="text-[11px] font-semibold tracking-[0.16em] text-[#9c98ad] uppercase">

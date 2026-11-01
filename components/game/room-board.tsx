@@ -19,7 +19,11 @@ import {
   skipQuestionAction,
   startGameAction,
 } from "@/app/actions/game"
+import { ClaimAccountForm } from "@/components/forms/claim-account-form"
+import type { PromptPack } from "@/components/forms/create-room-form"
 import { useGuessStore } from "@/components/game/guess-store"
+import { LobbySettings } from "@/components/game/lobby-settings"
+import { PlayerPrompts } from "@/components/game/player-prompts"
 import { formatRoomCode } from "@/features/rooms/codes"
 import { REACTIONS } from "@/lib/game/options"
 import type { RoomView } from "@/types/room"
@@ -42,9 +46,11 @@ function useCountdown(view: RoomView) {
 export function RoomBoard({
   initial,
   origin,
+  packs,
 }: {
   initial: RoomView
   origin: string
+  packs: PromptPack[]
 }) {
   const query = useQuery({
     queryKey: ["room", initial.code],
@@ -56,7 +62,7 @@ export function RoomBoard({
       return (await response.json()) as RoomView
     },
     initialData: initial,
-    refetchInterval: 2000,
+    refetchInterval: 4000,
   })
   const view = query.data
   const clock = useCountdown(view)
@@ -70,7 +76,7 @@ export function RoomBoard({
             Connection interrupted. Retrying.
           </p>
         ) : null}
-        <Lobby view={view} invite={invite} />
+        <Lobby view={view} invite={invite} packs={packs} />
       </div>
     )
   }
@@ -78,11 +84,11 @@ export function RoomBoard({
   return (
     <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_280px]">
       <section className="relative min-w-0 overflow-hidden rounded-[20px] border border-[#302d41] bg-[#1b1730] p-4 sm:p-5">
-        <div aria-hidden className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-[#9b7bff] to-[#ff6b8a]" />
+        <div aria-hidden className="absolute inset-x-0 top-0 h-1 bg-linear-to-r from-[#9b7bff] to-[#ff6b8a]" />
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div className="min-w-0">
             <p className="font-mono text-sm break-all text-[#ff6b8a]">{formatRoomCode(view.code)}</p>
-            <h1 className="font-display text-2xl font-bold break-words sm:text-3xl">{view.name}</h1>
+            <h1 className="font-display text-2xl font-bold wrap-break-word sm:text-3xl">{view.name}</h1>
             <p className="text-sm text-muted-foreground">
               Round {view.currentRound}/{view.totalRounds} · {view.phase}
             </p>
@@ -127,7 +133,15 @@ function initials(name: string) {
     .toUpperCase()
 }
 
-function Lobby({ view, invite }: { view: RoomView; invite: string }) {
+function Lobby({
+  view,
+  invite,
+  packs,
+}: {
+  view: RoomView
+  invite: string
+  packs: PromptPack[]
+}) {
   const [notice, setNotice] = useState<{ text: string; id: number } | null>(null)
   const joined = view.players.length
   const seatsLeft = Math.max(0, view.maxPlayers - joined)
@@ -211,8 +225,8 @@ function Lobby({ view, invite }: { view: RoomView; invite: string }) {
             </div>
             <p
               className={`rounded-full px-3 py-1 text-xs font-semibold ${readyCount === joined && joined >= 3
-                  ? "bg-[#10b981] text-[#100d1d]"
-                  : "bg-[#302d41] text-[#afadba]"
+                ? "bg-[#10b981] text-[#100d1d]"
+                : "bg-[#302d41] text-[#afadba]"
                 }`}
             >
               {readyCount === joined && joined >= 3 ? "Ready to launch" : "Waiting"}
@@ -234,7 +248,7 @@ function Lobby({ view, invite }: { view: RoomView; invite: string }) {
               aria-label={`${joined} of ${view.maxPlayers} seats filled, ${seatsLeft} left`}
             >
               <div
-                className="h-full rounded-full bg-gradient-to-r from-[#9b7bff] to-[#d8ccff]"
+                className="h-full rounded-full bg-linear-to-r from-[#9b7bff] to-[#d8ccff]"
                 style={{ width: `${fill}%` }}
               />
             </div>
@@ -243,6 +257,22 @@ function Lobby({ view, invite }: { view: RoomView; invite: string }) {
                 ? "No seats left."
                 : `${seatsLeft} ${seatsLeft === 1 ? "seat" : "seats"} left`}
             </p>
+          </div>
+          {view.youAreHost ? (
+            <div className="mt-4">
+              <LobbySettings view={view} packs={packs} />
+            </div>
+          ) : null}
+          {view.youAreGuest ? (
+            <details className="mt-4 rounded-xl bg-[#100d1d] px-3 py-3 text-sm text-[#afadba]">
+              <summary className="cursor-pointer text-[#f6f6fa]">
+                Keep this name and host next time
+              </summary>
+              <ClaimAccountForm defaultName={view.yourDisplayName} code={view.code} />
+            </details>
+          ) : null}
+          <div className="mt-4">
+            <PlayerPrompts view={view} />
           </div>
           {view.youAreHost ? (
             <p className="mt-4 flex gap-2 rounded-xl bg-[#100d1d] px-3 py-3 text-sm text-[#afadba]">
@@ -259,8 +289,8 @@ function Lobby({ view, invite }: { view: RoomView; invite: string }) {
           >
             <button
               className={`flex h-11 w-full items-center justify-center gap-2 rounded-xl border text-sm font-semibold ${you?.ready
-                  ? "border-[#10b981] text-[#34d399]"
-                  : "border-[#302d41] text-[#f6f6fa]"
+                ? "border-[#10b981] text-[#34d399]"
+                : "border-[#302d41] text-[#f6f6fa]"
                 }`}
             >
               {you?.ready ? <Check aria-hidden className="size-4" /> : null}
@@ -370,13 +400,30 @@ function Lobby({ view, invite }: { view: RoomView; invite: string }) {
   )
 }
 
+function PromptTitle({ view }: { view: RoomView }) {
+  return (
+    <div>
+      <p
+        className={
+          view.askedBy
+            ? "text-xs font-semibold text-[#9b7bff]"
+            : "text-xs font-semibold tracking-[0.16em] text-[#9b7bff] uppercase"
+        }
+      >
+        {view.askedBy ? `${view.askedBy} asks` : view.categoryName}
+      </p>
+      {view.isReplay ? (
+        <p className="mt-2 text-xs font-semibold text-[#ffd166]">Replay · this group has heard this prompt</p>
+      ) : null}
+      <h2 className="font-display mt-2 text-2xl font-bold wrap-break-word">{view.question}</h2>
+    </div>
+  )
+}
+
 function Answering({ view }: { view: RoomView }) {
   return (
     <div>
-      <p className="text-xs font-semibold tracking-[0.16em] text-[#9b7bff] uppercase">
-        {view.categoryName}
-      </p>
-      <h2 className="font-display mt-2 text-2xl font-bold break-words">{view.question}</h2>
+      <PromptTitle view={view} />
       <p className="mt-2 text-sm text-muted-foreground">
         Your answer stays anonymous until the reveal. {view.submittedCount}/
         {view.expectedAnswers} locked in.
@@ -405,7 +452,7 @@ function Guessing({ view }: { view: RoomView }) {
   const select = useGuessStore((state) => state.select)
   return (
     <div className="grid gap-4">
-      <h2 className="font-display text-2xl font-bold break-words">{view.question}</h2>
+      <PromptTitle view={view} />
       <p className="text-sm text-muted-foreground">
         A correct guess is worth 100 points. You cannot guess yourself.
       </p>
@@ -444,7 +491,7 @@ function Guessing({ view }: { view: RoomView }) {
 function Reveal({ view }: { view: RoomView }) {
   return (
     <div className="grid gap-4">
-      <h2 className="font-display text-2xl font-bold break-words">{view.question}</h2>
+      <PromptTitle view={view} />
       {view.answers.map((answer) => (
         <article key={answer.id} className="rounded-[16px] border border-border p-4">
           <p>{answer.text}</p>
@@ -487,7 +534,7 @@ function Results({ view }: { view: RoomView }) {
   const winner = view.leaderboard[0]
   return (
     <div>
-      <h2 className="font-display text-2xl font-bold break-words sm:text-3xl">
+      <h2 className="font-display text-2xl font-bold wrap-break-word sm:text-3xl">
         {winner ? `${winner.displayName} takes the crown` : "Game over"}
       </h2>
       <ol className="mt-4 grid gap-2">
@@ -501,6 +548,15 @@ function Results({ view }: { view: RoomView }) {
           </li>
         ))}
       </ol>
+      {view.youAreGuest ? (
+        <div className="mt-4 rounded-xl border border-[#302d41] bg-[#100d1d] p-4">
+          <h3 className="font-semibold text-[#f6f6fa]">Keep this name and host next time</h3>
+          <p className="mt-1 text-sm text-[#afadba]">
+            Save {view.yourDisplayName} on an account. Your score in this room stays with you.
+          </p>
+          <ClaimAccountForm defaultName={view.yourDisplayName} code={view.code} />
+        </div>
+      ) : null}
       {view.youAreHost && view.status === "COMPLETED" ? (
         <div className="mt-4 grid gap-2 sm:flex">
           <form action={rematchAction.bind(null, view.code)}>
@@ -601,7 +657,7 @@ function PlayerRail({ view }: { view: RoomView }) {
       <ul className="mt-3 grid gap-2">
         {view.players.map((player) => (
           <li key={player.id} className="flex items-center gap-2 rounded-xl bg-[#100d1d] px-3 py-2 text-sm">
-            <span className="min-w-0 flex-1 break-words">
+            <span className="min-w-0 flex-1 wrap-break-word">
               <span className="block text-[#f6f6fa]">{player.displayName}</span>
               <span className="mt-1 flex flex-wrap gap-1">
                 {player.isHost ? (

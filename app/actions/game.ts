@@ -1,6 +1,7 @@
 "use server"
 
 import { revalidatePath } from "next/cache"
+import { headers } from "next/headers"
 import { redirect } from "next/navigation"
 
 import {
@@ -13,14 +14,18 @@ import {
   reactToRound,
   rematch,
   removePlayer,
+  updateRoomSettings,
   reportAnswer,
   setReady,
   skipQuestion,
   startGame,
   submitAnswer,
   submitGuess,
+  submitRoomPrompt,
+  reviewRoomPrompt,
 } from "@/features/rooms/engine"
-import { requireUser, requestIp } from "@/lib/auth/session"
+import { auth } from "@/lib/auth/auth"
+import { getCurrentUser, requireUser, requestIp } from "@/lib/auth/session"
 import { prisma } from "@/lib/db/prisma"
 import { AppError, errorMessage } from "@/lib/errors"
 import {
@@ -28,6 +33,7 @@ import {
   CAPACITY_CHOICES,
   GUESS_TIMERS,
   ROUND_CHOICES,
+  guessTimerFor,
   isAvatar,
 } from "@/lib/game/options"
 import { assertRateLimit } from "@/lib/security/rate-limit"
@@ -56,6 +62,9 @@ export async function createRoomAction(
 ): Promise<ActionState> {
   try {
     const user = await requireUser()
+    if (user.isAnonymous) {
+      throw new AppError("Create an account to host a room.", "FORBIDDEN")
+    }
     await assertRateLimit(`create:${user.id}`, 10, 60 * 60 * 1000)
     const name = String(formData.get("name") ?? "").trim()
     const categoryIds = formData.getAll("categoryId").map(String)
@@ -100,13 +109,29 @@ export async function joinRoomAction(
   formData: FormData
 ): Promise<ActionState> {
   try {
-    const user = await requireUser()
-    await assertRateLimit(`join:${user.id}`, 10, 15 * 60 * 1000)
     const code = parseRoomCode(String(formData.get("code") ?? ""))
     if (code.length !== 8) throw new AppError("Enter the full room code.")
     const displayName = String(formData.get("displayName") ?? "").trim()
     const avatar = String(formData.get("avatar") ?? "")
-    await joinRoom({ userId: user.id, code, displayName, avatar })
+    const current = await getCurrentUser()
+    let userId = current?.id ?? ""
+    if (!current) {
+      await assertRateLimit(`join-guest:${await requestIp()}`, 10, 15 * 60 * 1000)
+      const created = await auth.api.signInAnonymous({ headers: await headers() })
+      userId = created.user.id
+    } else {
+      if (current.status !== "ACTIVE") {
+        throw new AppError("This account is suspended.", "FORBIDDEN")
+      }
+      await assertRateLimit(`join:${current.id}`, 10, 15 * 60 * 1000)
+    }
+    await joinRoom({ userId, code, displayName, avatar })
+    if (!current || current.isAnonymous) {
+      await prisma.user.update({
+        where: { id: userId },
+        data: { name: displayName },
+      })
+    }
     redirect(`/room/${code}`)
   } catch (error) {
     if (typeof error === "object" && error && "digest" in error) throw error
@@ -205,6 +230,46 @@ export async function closeRoomAction(code: string) {
   revalidatePath(`/room/${roomCode}`)
 }
 
+export async function updateRoomSettingsAction(
+  _prev: ActionState,
+  formData: FormData
+): Promise<ActionState> {
+  try {
+    const user = await requireUser()
+    if (user.isAnonymous) {
+      throw new AppError("Create an account to host a room.", "FORBIDDEN")
+    }
+    const code = parseRoomCode(String(formData.get("code") ?? ""))
+    const categoryIds = formData.getAll("categoryId").map(String)
+    const totalRounds = Number(formData.get("totalRounds"))
+    const maxPlayers = Number(formData.get("maxPlayers"))
+    const answerTimer = Number(formData.get("answerTimer"))
+    const guessingTimer = guessTimerFor(answerTimer)
+    if (
+      !ROUND_CHOICES.includes(totalRounds as (typeof ROUND_CHOICES)[number]) ||
+      !CAPACITY_CHOICES.includes(maxPlayers as (typeof CAPACITY_CHOICES)[number]) ||
+      !ANSWER_TIMERS.includes(answerTimer as (typeof ANSWER_TIMERS)[number]) ||
+      !GUESS_TIMERS.includes(guessingTimer)
+    ) {
+      throw new AppError("Choose a valid room setup.")
+    }
+    await updateRoomSettings({
+      hostId: user.id,
+      code,
+      categoryIds,
+      totalRounds,
+      maxPlayers,
+      answerTimer,
+      guessingTimer,
+      cleanFilter: formData.get("cleanFilter") === "on",
+    })
+    revalidatePath(`/room/${code}`)
+    return { success: "Room setup saved." }
+  } catch (error) {
+    return fail(error)
+  }
+}
+
 export async function rematchAction(code: string) {
   const user = await requireUser()
   const next = await rematch(user.id, parseRoomCode(code))
@@ -228,6 +293,29 @@ export async function reportAction(
   } catch (error) {
     return fail(error)
   }
+}
+
+export async function submitPromptAction(
+  _prev: ActionState,
+  formData: FormData
+): Promise<ActionState> {
+  try {
+    const user = await requireUser()
+    await assertRateLimit(`prompt:${user.id}`, 20, 15 * 60 * 1000)
+    const code = parseRoomCode(String(formData.get("code") ?? ""))
+    await submitRoomPrompt(user.id, code, String(formData.get("prompt") ?? ""))
+    revalidatePath(`/room/${code}`)
+    return { success: "Question added to this room." }
+  } catch (error) {
+    return fail(error)
+  }
+}
+
+export async function reviewPromptAction(code: string, promptId: string, decision: "ACCEPTED" | "REMOVED") {
+  const user = await requireUser()
+  const roomCode = parseRoomCode(code)
+  await reviewRoomPrompt({ actorId: user.id, code: roomCode, promptId, decision })
+  revalidatePath(`/room/${roomCode}`)
 }
 
 export async function clientIp() {
