@@ -1,10 +1,12 @@
 "use server"
 
-import { headers } from "next/headers"
+import { cookies, headers } from "next/headers"
 import { redirect } from "next/navigation"
 
+import { claimGuestAccount, isEmailTakenMessage } from "@/features/auth/claim"
+import { CLAIM_GUEST_COOKIE, CLAIM_ROOM_COOKIE, transferGuestSeat } from "@/features/auth/guest-transfer"
 import { auth } from "@/lib/auth/auth"
-import { requestIp } from "@/lib/auth/session"
+import { getCurrentUser, requestIp } from "@/lib/auth/session"
 import { prisma } from "@/lib/db/prisma"
 import { env } from "@/lib/env"
 import { AppError, errorMessage } from "@/lib/errors"
@@ -16,6 +18,7 @@ import { safeNextPath } from "@/lib/security/next-path"
 export type ActionState = {
   error?: string
   success?: string
+  loginHref?: string
 } | null
 
 const WINDOW = 15 * 60 * 1000
@@ -88,25 +91,97 @@ export async function loginAction(
       WINDOW
     )
     const headerStore = await headers()
-    if (identifier.includes("@")) {
-      await auth.api.signInEmail({
-        body: { email: identifier.toLowerCase(), password },
-        headers: headerStore,
-      })
-    } else {
-      await auth.api.signInUsername({
-        body: { username: identifier, password },
-        headers: headerStore,
-      })
-    }
-    const session = await auth.api.getSession({ headers: await headers() })
-    if (session?.user && "status" in session.user && session.user.status !== "ACTIVE") {
+    const signedIn = identifier.includes("@")
+      ? await auth.api.signInEmail({
+          body: { email: identifier.toLowerCase(), password },
+          headers: headerStore,
+        })
+      : await auth.api.signInUsername({
+          body: { username: identifier, password },
+          headers: headerStore,
+        })
+    if ("status" in signedIn.user && signedIn.user.status !== "ACTIVE") {
       await auth.api.signOut({ headers: await headers() })
       return { error: "This account is suspended." }
+    }
+    const signedInId = signedIn.user.id
+    if (signedInId) {
+      const jar = await cookies()
+      const guestId = jar.get(CLAIM_GUEST_COOKIE)?.value
+      if (guestId && guestId !== signedInId) {
+        await transferGuestSeat(guestId, signedInId)
+      }
+      jar.delete(CLAIM_GUEST_COOKIE)
+      jar.delete(CLAIM_ROOM_COOKIE)
     }
   } catch (error) {
     if (error instanceof AppError) return { error: error.message }
     return { error: "Invalid email or password." }
+  }
+  redirect(next)
+}
+
+export async function claimAccountAction(
+  _prev: ActionState,
+  formData: FormData
+): Promise<ActionState> {
+  const email = field(formData, "email").toLowerCase()
+  const username = field(formData, "username")
+  const password = String(formData.get("password") ?? "")
+  const confirm = String(formData.get("confirm") ?? "")
+  const name = field(formData, "name") || username
+  const code = field(formData, "code")
+  const next = safeNextPath(formData.get("next"), code ? `/room/${code}` : "/")
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    return { error: "Enter a valid email address." }
+  }
+  if (!/^[a-zA-Z0-9_.]{3,24}$/.test(username)) {
+    return { error: "Usernames are 3 to 24 letters, numbers, dots, or underscores." }
+  }
+  if (password.length < 8 || password.length > 128) {
+    return { error: "Use a password of at least 8 characters." }
+  }
+  if (password !== confirm) return { error: "Passwords do not match." }
+  if (name.length < 2 || name.length > 32) {
+    return { error: "Display names are 2 to 32 characters." }
+  }
+  const user = await getCurrentUser()
+  if (!user) return { error: "Join a room before saving this name." }
+  try {
+    await assertRateLimit(`claim:${user.id}`, 8, WINDOW)
+    await claimGuestAccount({
+      userId: user.id,
+      email,
+      username,
+      password,
+      name,
+    })
+  } catch (error) {
+    if (error instanceof AppError && isEmailTakenMessage(error.message)) {
+      const jar = await cookies()
+      jar.set(CLAIM_GUEST_COOKIE, user.id, {
+        httpOnly: true,
+        sameSite: "lax",
+        path: "/",
+        maxAge: 30 * 60,
+        secure: process.env.NODE_ENV === "production",
+      })
+      if (code) {
+        jar.set(CLAIM_ROOM_COOKIE, code, {
+          httpOnly: true,
+          sameSite: "lax",
+          path: "/",
+          maxAge: 30 * 60,
+          secure: process.env.NODE_ENV === "production",
+        })
+      }
+      return {
+        error: error.message,
+        loginHref: `/login?next=${encodeURIComponent(next)}`,
+      }
+    }
+    if (error instanceof AppError) return { error: error.message }
+    return { error: "Could not save this account. That email or username may already be in use." }
   }
   redirect(next)
 }
