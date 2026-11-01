@@ -2,15 +2,17 @@ import "server-only"
 
 import { randomInt } from "node:crypto"
 
-import { Prisma, type PrismaClient } from "@prisma/client"
+import { Prisma } from "@prisma/client"
 
 import { answerError } from "@/features/answers/rules"
 import { guessError } from "@/features/guesses/rules"
 import { createRoomCode } from "@/features/rooms/codes"
+import { choosePrompt, normalizePrompt, PROMPT_MAX_LENGTH, PROMPT_MIN_LENGTH } from "@/features/rooms/prompts"
 import {
   canTransitionRoom,
   canTransitionRound,
   chooseNextHost,
+  phaseNeedsAdvance,
   type RoundStatus,
 } from "@/features/rooms/transitions"
 import { buildRoomView, type ViewInput } from "@/features/rooms/view"
@@ -18,20 +20,33 @@ import { guessesToScore } from "@/features/scoring/score"
 import { writeAudit } from "@/lib/audit"
 import { prisma } from "@/lib/db/prisma"
 import { AppError } from "@/lib/errors"
-import { isAvatar, REACTIONS } from "@/lib/game/options"
+import { isAvatar, guessTimerFor, REACTIONS } from "@/lib/game/options"
 import type { RoomPreview, RoomView } from "@/types/room"
 
 type Tx = Prisma.TransactionClient
+type PrismaClient = Prisma.DefaultPrismaClient
+
+const roomTransaction = { timeout: 15_000, maxWait: 10_000 } as const
+
+function runRoomTransaction<T>(fn: (tx: Tx) => Promise<T>) {
+  return prisma.$transaction(fn, roomTransaction)
+}
 
 const roomInclude = {
-  players: true,
+  players: { include: { user: { select: { isAnonymous: true } } } },
   categories: { include: { category: true } },
   rounds: {
     include: {
       answers: { include: { guesses: true } },
       question: { include: { category: true } },
+      roomPrompt: { include: { player: { select: { displayName: true } } } },
       reactions: true,
     },
+  },
+  prompts: {
+    where: { status: { in: ["PENDING", "ACCEPTED"] } },
+    include: { player: { select: { displayName: true, userId: true } } },
+    orderBy: { createdAt: "asc" },
   },
 } satisfies Prisma.RoomInclude
 
@@ -45,6 +60,43 @@ function activePlayers(room: LoadedRoom) {
 
 function latestRound(room: LoadedRoom) {
   return [...room.rounds].sort((left, right) => right.roundNumber - left.roundNumber)[0] ?? null
+}
+
+function hostCandidates(
+  room: LoadedRoom,
+  patch?: {
+    userId: string
+    status: "JOINED" | "READY" | "LEFT" | "REMOVED"
+    lastSeenAt: number
+  }
+) {
+  return room.players.map((player) => ({
+    userId: player.userId,
+    joinedAt: player.joinedAt.getTime(),
+    lastSeenAt:
+      patch?.userId === player.userId ? patch.lastSeenAt : player.lastSeenAt.getTime(),
+    status: patch?.userId === player.userId ? patch.status : player.status,
+    canHost: !player.user.isAnonymous,
+  }))
+}
+
+async function applyHostSeat(tx: Tx, room: LoadedRoom, now: Date) {
+  const nextHost = chooseNextHost(hostCandidates(room), room.hostId, now.getTime())
+  if (nextHost === room.hostId) return room
+  if (!nextHost) {
+    if (room.status !== "CLOSED" && canTransitionRoom(room.status, "CLOSED")) {
+      await tx.room.update({
+        where: { id: room.id },
+        data: { status: "CLOSED" },
+      })
+    }
+    return loadRoom(tx, room.id)
+  }
+  await tx.room.update({
+    where: { id: room.id },
+    data: { hostId: nextHost },
+  })
+  return loadRoom(tx, room.id)
 }
 
 async function lockRoom(tx: Tx, roomId: string) {
@@ -86,13 +138,17 @@ async function settings(db: Tx | PrismaClient) {
   })
 }
 
-async function pickQuestion(
-  tx: Tx,
-  room: LoadedRoom,
-  exclude: string[]
-) {
+function usedPackQuestionIds(room: LoadedRoom) {
+  return room.rounds.flatMap((round) => (round.questionId ? [round.questionId] : []))
+}
+
+async function drawPrompt(tx: Tx, room: LoadedRoom, exclude: string[]) {
+  const playerPrompts = await tx.roomPrompt.findMany({
+    where: { roomId: room.id, status: "ACCEPTED" },
+    select: { id: true },
+  })
   const categoryIds = room.categories.map((item) => item.categoryId)
-  const questions = await tx.question.findMany({
+  const packQuestions = await tx.question.findMany({
     where: {
       isActive: true,
       categoryId: { in: categoryIds },
@@ -103,8 +159,41 @@ async function pickQuestion(
     },
     select: { id: true },
   })
-  if (questions.length === 0) return null
-  return questions[randomInt(questions.length)]?.id ?? null
+  const userIds = activePlayers(room).map((player) => player.userId)
+  const seenRows =
+    userIds.length === 0 || packQuestions.length === 0
+      ? []
+      : await tx.round.findMany({
+        where: {
+          questionId: { in: packQuestions.map((question) => question.id) },
+          room: { players: { some: { userId: { in: userIds } } } },
+        },
+        select: { questionId: true },
+      })
+  const seenIds = new Set(
+    seenRows.flatMap((row) => (row.questionId ? [row.questionId] : []))
+  )
+  const drawn = choosePrompt(
+    {
+      playerPromptIds: playerPrompts.map((prompt) => prompt.id),
+      unseenPackIds: packQuestions
+        .filter((question) => !seenIds.has(question.id))
+        .map((question) => question.id),
+      seenPackIds: packQuestions
+        .filter((question) => seenIds.has(question.id))
+        .map((question) => question.id),
+    },
+    randomInt
+  )
+  if (!drawn) return null
+  if (drawn.kind === "player") {
+    await tx.roomPrompt.update({
+      where: { id: drawn.id },
+      data: { status: "USED" },
+    })
+    return { questionId: null, roomPromptId: drawn.id, isReplay: false }
+  }
+  return { questionId: drawn.id, roomPromptId: null, isReplay: drawn.isReplay }
 }
 
 async function scoreRound(tx: Tx, round: LoadedRoom["rounds"][number]) {
@@ -138,24 +227,7 @@ async function scoreRound(tx: Tx, round: LoadedRoom["rounds"][number]) {
 
 async function advanceLocked(tx: Tx, roomId: string, now: Date) {
   await lockRoom(tx, roomId)
-  let room = await loadRoom(tx, roomId)
-  const nextHost = chooseNextHost(
-    room.players.map((player) => ({
-      userId: player.userId,
-      joinedAt: player.joinedAt.getTime(),
-      lastSeenAt: player.lastSeenAt.getTime(),
-      status: player.status,
-    })),
-    room.hostId,
-    now.getTime()
-  )
-  if (nextHost && nextHost !== room.hostId) {
-    await tx.room.update({
-      where: { id: room.id },
-      data: { hostId: nextHost },
-    })
-    room = await loadRoom(tx, roomId)
-  }
+  let room = await applyHostSeat(tx, await loadRoom(tx, roomId), now)
   if (room.status !== "IN_PROGRESS") return room
   const round = latestRound(room)
   if (!round) return room
@@ -229,10 +301,15 @@ async function advanceLocked(tx: Tx, roomId: string, now: Date) {
 }
 
 export async function advanceRoom(roomId: string, now = new Date()) {
-  await prisma.$transaction((tx) => advanceLocked(tx, roomId, now))
+  await runRoomTransaction((tx) => advanceLocked(tx, roomId, now))
 }
 
-function toView(room: LoadedRoom, viewerUserId: string, now: Date): RoomView {
+function toView(
+  room: LoadedRoom,
+  viewerUserId: string,
+  now: Date,
+  viewerIsGuest: boolean
+): RoomView {
   const round = latestRound(room)
   const input: ViewInput = {
     now: now.toISOString(),
@@ -241,12 +318,22 @@ function toView(room: LoadedRoom, viewerUserId: string, now: Date): RoomView {
     status: room.status,
     hostId: room.hostId,
     viewerUserId,
+    viewerIsGuest,
+    categoryIds: room.categories.map((item) => item.categoryId),
+    cleanFilter: room.cleanFilter,
     maxPlayers: room.maxPlayers,
     totalRounds: room.totalRounds,
     currentRound: room.currentRound,
     answerSeconds: room.answerTimer,
     guessingSeconds: room.guessingTimer,
     categories: room.categories.map((item) => item.category.name),
+    prompts: room.prompts.map((prompt) => ({
+      id: prompt.id,
+      text: prompt.text,
+      authorName: prompt.player.displayName,
+      status: prompt.status === "PENDING" ? ("PENDING" as const) : ("ACCEPTED" as const),
+      isYours: prompt.player.userId === viewerUserId,
+    })),
     players: room.players.map((player) => ({
       id: player.id,
       userId: player.userId,
@@ -258,28 +345,30 @@ function toView(room: LoadedRoom, viewerUserId: string, now: Date): RoomView {
     })),
     round: round
       ? {
-          status: round.status,
-          deadlineAt: round.phaseDeadlineAt?.toISOString() ?? null,
-          question: round.question.text,
-          categoryName: round.question.category.name,
-          answers: round.answers.map((answer) => ({
-            id: answer.id,
-            playerId: answer.playerId,
-            text: answer.answerText,
-            removed: answer.removed,
-            sortKey: answer.sortKey,
-            guesses: answer.guesses.map((guess) => ({
-              guesserId: guess.guesserId,
-              guessedPlayerId: guess.guessedPlayerId,
-              isCorrect: guess.isCorrect,
-              pointsAwarded: guess.pointsAwarded,
-            })),
+        status: round.status,
+        deadlineAt: round.phaseDeadlineAt?.toISOString() ?? null,
+        question: round.roomPrompt?.text ?? round.question?.text ?? "",
+        categoryName: round.question?.category.name ?? "Player question",
+        askedBy: round.roomPrompt?.player.displayName ?? null,
+        isReplay: round.isReplay,
+        answers: round.answers.map((answer) => ({
+          id: answer.id,
+          playerId: answer.playerId,
+          text: answer.answerText,
+          removed: answer.removed,
+          sortKey: answer.sortKey,
+          guesses: answer.guesses.map((guess) => ({
+            guesserId: guess.guesserId,
+            guessedPlayerId: guess.guessedPlayerId,
+            isCorrect: guess.isCorrect,
+            pointsAwarded: guess.pointsAwarded,
           })),
-          reactions: round.reactions.map((reaction) => ({
-            emoji: reaction.emoji,
-            playerId: reaction.playerId,
-          })),
-        }
+        })),
+        reactions: round.reactions.map((reaction) => ({
+          emoji: reaction.emoji,
+          playerId: reaction.playerId,
+        })),
+      }
       : null,
     history: room.rounds.flatMap((item) =>
       item.answers.flatMap((answer) =>
@@ -311,14 +400,36 @@ export async function getRoomView(code: string, userId: string) {
   if (!membership || membership.status === "REMOVED" || membership.status === "LEFT") {
     throw new AppError("Join this room before opening it.", "FORBIDDEN")
   }
+  const now = new Date()
   await prisma.roomPlayer.update({
     where: { id: membership.id },
-    data: { lastSeenAt: new Date() },
+    data: { lastSeenAt: now },
   })
-  const now = new Date()
-  await advanceRoom(roomId, now)
-  const room = await loadRoom(prisma, roomId)
-  return toView(room, userId, now)
+  let room = await loadRoom(prisma, roomId)
+  const round = latestRound(room)
+  const nextHost = chooseNextHost(hostCandidates(room), room.hostId, now.getTime())
+  const needsAdvance =
+    nextHost !== room.hostId ||
+    phaseNeedsAdvance({
+      status: room.status,
+      roundStatus: round?.status ?? null,
+      deadlineAt: round?.phaseDeadlineAt?.getTime() ?? null,
+      now: now.getTime(),
+      activePlayerIds: activePlayers(room).map((player) => player.id),
+      answers: (round?.answers ?? []).map((answer) => ({
+        playerId: answer.playerId,
+        guesses: answer.guesses.map((guess) => ({ guesserId: guess.guesserId })),
+      })),
+    })
+  if (needsAdvance) {
+    await advanceRoom(roomId, now)
+    room = await loadRoom(prisma, roomId)
+  }
+  const viewer = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { isAnonymous: true },
+  })
+  return toView(room, userId, now, viewer?.isAnonymous === true)
 }
 
 export async function previewRoom(code: string): Promise<RoomPreview> {
@@ -418,7 +529,7 @@ export async function joinRoom(input: {
     throw new AppError("Display names are 2 to 18 characters.", "VALIDATION")
   }
   const roomId = await roomIdForCode(input.code)
-  await prisma.$transaction(async (tx) => {
+  await runRoomTransaction(async (tx) => {
     await lockRoom(tx, roomId)
     const room = await loadRoom(tx, roomId)
     assertOpen(room)
@@ -462,7 +573,7 @@ export async function joinRoom(input: {
 
 export async function setReady(userId: string, code: string, ready: boolean) {
   const roomId = await roomIdForCode(code)
-  await prisma.$transaction(async (tx) => {
+  await runRoomTransaction(async (tx) => {
     await lockRoom(tx, roomId)
     const room = await loadRoom(tx, roomId)
     if (room.status !== "WAITING") {
@@ -481,7 +592,7 @@ export async function setReady(userId: string, code: string, ready: boolean) {
 
 export async function leaveRoom(userId: string, code: string) {
   const roomId = await roomIdForCode(code)
-  await prisma.$transaction(async (tx) => {
+  await runRoomTransaction(async (tx) => {
     await lockRoom(tx, roomId)
     const room = await loadRoom(tx, roomId)
     const player = room.players.find((item) => item.userId === userId)
@@ -492,24 +603,24 @@ export async function leaveRoom(userId: string, code: string) {
     })
     const now = new Date()
     const nextHost = chooseNextHost(
-      room.players.map((item) => ({
-        userId: item.userId,
-        joinedAt: item.joinedAt.getTime(),
-        lastSeenAt: item.userId === userId ? 0 : item.lastSeenAt.getTime(),
-        status: item.userId === userId ? "LEFT" : item.status,
-      })),
+      hostCandidates(room, { userId, status: "LEFT", lastSeenAt: 0 }),
       room.hostId,
       now.getTime()
     )
-    if (nextHost && nextHost !== room.hostId) {
-      await tx.room.update({ where: { id: room.id }, data: { hostId: nextHost } })
+    if (nextHost === room.hostId) return
+    if (!nextHost) {
+      if (room.status !== "CLOSED" && canTransitionRoom(room.status, "CLOSED")) {
+        await tx.room.update({ where: { id: room.id }, data: { status: "CLOSED" } })
+      }
+      return
     }
+    await tx.room.update({ where: { id: room.id }, data: { hostId: nextHost } })
   })
 }
 
 export async function removePlayer(hostId: string, code: string, playerId: string) {
   const roomId = await roomIdForCode(code)
-  await prisma.$transaction(async (tx) => {
+  await runRoomTransaction(async (tx) => {
     const room = await advanceLocked(tx, roomId, new Date())
     assertHost(hostId, room.hostId)
     const player = room.players.find((item) => item.id === playerId)
@@ -526,7 +637,7 @@ export async function removePlayer(hostId: string, code: string, playerId: strin
 
 export async function startGame(hostId: string, code: string) {
   const roomId = await roomIdForCode(code)
-  await prisma.$transaction(async (tx) => {
+  await runRoomTransaction(async (tx) => {
     const room = await advanceLocked(tx, roomId, new Date())
     assertOpen(room)
     assertHost(hostId, room.hostId)
@@ -540,14 +651,16 @@ export async function startGame(hostId: string, code: string) {
         "CONFLICT"
       )
     }
-    const questionId = await pickQuestion(tx, room, [])
-    if (!questionId) throw new AppError("No questions are available.", "CONFLICT")
+    const drawn = await drawPrompt(tx, room, [])
+    if (!drawn) throw new AppError("No questions are available.", "CONFLICT")
     const now = new Date()
     await tx.round.create({
       data: {
         roomId: room.id,
         roundNumber: 1,
-        questionId,
+        questionId: drawn.questionId,
+        roomPromptId: drawn.roomPromptId,
+        isReplay: drawn.isReplay,
         status: "ANSWERING",
         phaseDeadlineAt: new Date(now.getTime() + room.answerTimer * 1000),
         startedAt: now,
@@ -562,7 +675,7 @@ export async function startGame(hostId: string, code: string) {
 
 export async function submitAnswer(userId: string, code: string, text: string) {
   const roomId = await roomIdForCode(code)
-  await prisma.$transaction(async (tx) => {
+  await runRoomTransaction(async (tx) => {
     const now = new Date()
     const room = await advanceLocked(tx, roomId, now)
     const round = latestRound(room)
@@ -596,7 +709,7 @@ export async function submitGuess(input: {
   guessedPlayerId: string
 }) {
   const roomId = await roomIdForCode(input.code)
-  await prisma.$transaction(async (tx) => {
+  await runRoomTransaction(async (tx) => {
     const now = new Date()
     const room = await advanceLocked(tx, roomId, now)
     const round = latestRound(room)
@@ -631,7 +744,7 @@ export async function reactToRound(userId: string, code: string, emoji: string) 
     throw new AppError("That reaction is not available.", "VALIDATION")
   }
   const roomId = await roomIdForCode(code)
-  await prisma.$transaction(async (tx) => {
+  await runRoomTransaction(async (tx) => {
     const room = await advanceLocked(tx, roomId, new Date())
     const round = latestRound(room)
     const player = activePlayers(room).find((item) => item.userId === userId)
@@ -655,7 +768,7 @@ export async function reactToRound(userId: string, code: string, emoji: string) 
 
 export async function nextRound(hostId: string, code: string) {
   const roomId = await roomIdForCode(code)
-  await prisma.$transaction(async (tx) => {
+  await runRoomTransaction(async (tx) => {
     const room = await advanceLocked(tx, roomId, new Date())
     assertHost(hostId, room.hostId)
     const round = latestRound(room)
@@ -679,15 +792,16 @@ export async function nextRound(hostId: string, code: string) {
       })
       return
     }
-    const used = room.rounds.map((item) => item.questionId)
-    const questionId = await pickQuestion(tx, room, used)
-    if (!questionId) throw new AppError("No questions left in these packs.", "CONFLICT")
+    const drawn = await drawPrompt(tx, room, usedPackQuestionIds(room))
+    if (!drawn) throw new AppError("No questions left to draw.", "CONFLICT")
     const now = new Date()
     await tx.round.create({
       data: {
         roomId: room.id,
         roundNumber: room.currentRound + 1,
-        questionId,
+        questionId: drawn.questionId,
+        roomPromptId: drawn.roomPromptId,
+        isReplay: drawn.isReplay,
         status: "ANSWERING",
         phaseDeadlineAt: new Date(now.getTime() + room.answerTimer * 1000),
         startedAt: now,
@@ -702,23 +816,22 @@ export async function nextRound(hostId: string, code: string) {
 
 export async function skipQuestion(hostId: string, code: string) {
   const roomId = await roomIdForCode(code)
-  await prisma.$transaction(async (tx) => {
+  await runRoomTransaction(async (tx) => {
     const room = await advanceLocked(tx, roomId, new Date())
     assertHost(hostId, room.hostId)
     const round = latestRound(room)
     if (!round || round.status !== "ANSWERING") {
       throw new AppError("You can skip a question while players are answering.", "CONFLICT")
     }
-    const questionId = await pickQuestion(tx, room, [
-      ...room.rounds.map((item) => item.questionId),
-      round.questionId,
-    ])
-    if (!questionId) throw new AppError("No replacement question is available.", "CONFLICT")
+    const drawn = await drawPrompt(tx, room, usedPackQuestionIds(room))
+    if (!drawn) throw new AppError("No replacement question is available.", "CONFLICT")
     await tx.answer.deleteMany({ where: { roundId: round.id } })
     await tx.round.update({
       where: { id: round.id },
       data: {
-        questionId,
+        questionId: drawn.questionId,
+        roomPromptId: drawn.roomPromptId,
+        isReplay: drawn.isReplay,
         phaseDeadlineAt: new Date(Date.now() + room.answerTimer * 1000),
       },
     })
@@ -727,7 +840,7 @@ export async function skipQuestion(hostId: string, code: string) {
 
 export async function endGame(hostId: string, code: string) {
   const roomId = await roomIdForCode(code)
-  await prisma.$transaction(async (tx) => {
+  await runRoomTransaction(async (tx) => {
     const room = await advanceLocked(tx, roomId, new Date())
     assertHost(hostId, room.hostId)
     if (!canTransitionRoom(room.status, "COMPLETED")) {
@@ -771,7 +884,7 @@ export async function closeRoom(input: {
   reason?: string
 }) {
   const roomId = await roomIdForCode(input.code)
-  await prisma.$transaction(async (tx) => {
+  await runRoomTransaction(async (tx) => {
     await lockRoom(tx, roomId)
     const room = await loadRoom(tx, roomId)
     if (!input.asStaff) assertHost(input.actorId, room.hostId)
@@ -792,9 +905,65 @@ export async function closeRoom(input: {
   }
 }
 
+export async function updateRoomSettings(input: {
+  hostId: string
+  code: string
+  categoryIds: string[]
+  totalRounds: number
+  maxPlayers: number
+  answerTimer: number
+  guessingTimer: number
+  cleanFilter: boolean
+}) {
+  if (guessTimerFor(input.answerTimer) !== input.guessingTimer) {
+    throw new AppError("Choose a valid room setup.", "VALIDATION")
+  }
+  if (input.categoryIds.length < 1) {
+    throw new AppError("Pick at least one prompt pack.", "VALIDATION")
+  }
+  const roomId = await roomIdForCode(input.code)
+  await runRoomTransaction(async (tx) => {
+    await lockRoom(tx, roomId)
+    const room = await loadRoom(tx, roomId)
+    assertHost(input.hostId, room.hostId)
+    if (room.status !== "WAITING") {
+      throw new AppError("Room setup can only change before the game starts.", "CONFLICT")
+    }
+    if (input.maxPlayers < activePlayers(room).length) {
+      throw new AppError("Capacity cannot drop below the players already seated.", "VALIDATION")
+    }
+    const categories = await tx.category.findMany({
+      where: { id: { in: input.categoryIds }, isActive: true },
+    })
+    if (categories.length !== new Set(input.categoryIds).size) {
+      throw new AppError("Choose active prompt packs.", "VALIDATION")
+    }
+    if (input.cleanFilter && categories.some((category) => category.isAdult)) {
+      throw new AppError("Turn off the clean filter or drop the 18+ pack.", "VALIDATION")
+    }
+    await tx.roomCategory.deleteMany({ where: { roomId: room.id } })
+    await tx.roomCategory.createMany({
+      data: input.categoryIds.map((categoryId) => ({
+        roomId: room.id,
+        categoryId,
+      })),
+    })
+    await tx.room.update({
+      where: { id: room.id },
+      data: {
+        totalRounds: input.totalRounds,
+        maxPlayers: input.maxPlayers,
+        answerTimer: input.answerTimer,
+        guessingTimer: input.guessingTimer,
+        cleanFilter: input.cleanFilter,
+      },
+    })
+  })
+}
+
 export async function rematch(hostId: string, code: string) {
   const roomId = await roomIdForCode(code)
-  return prisma.$transaction(async (tx) => {
+  return runRoomTransaction(async (tx) => {
     await lockRoom(tx, roomId)
     const room = await loadRoom(tx, roomId)
     assertHost(hostId, room.hostId)
@@ -844,6 +1013,72 @@ export async function rematch(hostId: string, code: string) {
       }
     }
     throw new AppError("Could not start a rematch. Try again.", "CONFLICT")
+  })
+}
+
+export async function submitRoomPrompt(userId: string, code: string, text: string) {
+  const prompt = normalizePrompt(text)
+  if (prompt.length < PROMPT_MIN_LENGTH || prompt.length > PROMPT_MAX_LENGTH) {
+    throw new AppError(
+      `Player questions are ${PROMPT_MIN_LENGTH} to ${PROMPT_MAX_LENGTH} characters.`,
+      "VALIDATION"
+    )
+  }
+  const roomId = await roomIdForCode(code)
+  await runRoomTransaction(async (tx) => {
+    await lockRoom(tx, roomId)
+    const room = await loadRoom(tx, roomId)
+    if (room.status !== "WAITING") {
+      throw new AppError("Questions can be added before the game starts.", "CONFLICT")
+    }
+    const player = activePlayers(room).find((item) => item.userId === userId)
+    if (!player) throw new AppError("Join this room before asking a question.", "FORBIDDEN")
+    const existing = room.prompts.find((item) => item.player.userId === userId)
+    const status =
+      room.cleanFilter && player.userId !== room.hostId ? "PENDING" : "ACCEPTED"
+    if (existing) {
+      await tx.roomPrompt.update({
+        where: { id: existing.id },
+        data: { text: prompt, status },
+      })
+      return
+    }
+    await tx.roomPrompt.create({
+      data: { roomId: room.id, playerId: player.id, text: prompt, status },
+    })
+  })
+}
+
+export async function reviewRoomPrompt(input: {
+  actorId: string
+  code: string
+  promptId: string
+  decision: "ACCEPTED" | "REMOVED"
+}) {
+  const roomId = await roomIdForCode(input.code)
+  await runRoomTransaction(async (tx) => {
+    await lockRoom(tx, roomId)
+    const room = await loadRoom(tx, roomId)
+    if (room.status !== "WAITING") {
+      throw new AppError("Player questions are locked once the game starts.", "CONFLICT")
+    }
+    const prompt = room.prompts.find((item) => item.id === input.promptId)
+    if (!prompt) throw new AppError("That question is no longer in the pile.", "NOT_FOUND")
+    const isHost = input.actorId === room.hostId
+    const isAuthor = prompt.player.userId === input.actorId
+    if (input.decision === "ACCEPTED" && !isHost) {
+      throw new AppError("Only the host can approve a question.", "FORBIDDEN")
+    }
+    if (!isHost && !isAuthor) {
+      throw new AppError("Only the host can remove that question.", "FORBIDDEN")
+    }
+    if (input.decision === "ACCEPTED" && prompt.status !== "PENDING") {
+      throw new AppError("That question is already in the pile.", "CONFLICT")
+    }
+    await tx.roomPrompt.update({
+      where: { id: prompt.id },
+      data: { status: input.decision },
+    })
   })
 }
 
