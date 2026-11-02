@@ -1,12 +1,15 @@
 import Link from "next/link"
 
 import { logoutAction } from "@/app/actions/auth"
+import { AccountLink } from "@/components/layout/account-link"
 import { getCurrentUser } from "@/lib/auth/session"
 import { MobileNav } from "@/components/layout/mobile-nav"
 
 export async function SiteHeader() {
   const user = await getCurrentUser()
-  const label = user?.username ?? user?.name
+  const account = user
+    ? { id: user.id, name: user.name, username: user.username, avatar: user.avatar }
+    : null
 
   return (
     <header className="border-b border-[#302d41] bg-[#1b1730]/95 text-[#f6f6fa]">
@@ -20,9 +23,7 @@ export async function SiteHeader() {
           </Link>
           {user ? (
             <>
-              <Link href="/account" className="max-w-40 truncate rounded-lg px-3 py-2 text-[#f6f6fa] hover:bg-white/10">
-                {label}
-              </Link>
+              {account ? <AccountLink user={account} /> : null}
               <form action={logoutAction}>
                 <button className="h-10 rounded-lg bg-[#ff6b8a] px-4 font-semibold text-[#100d1d]">
                   Log out
@@ -41,10 +42,8 @@ export async function SiteHeader() {
           )}
         </nav>
         <div className="flex items-center gap-2 md:hidden">
-          {user ? (
-            <Link href="/account" className="max-w-24 truncate text-sm">
-              {label}
-            </Link>
+          {account ? (
+            <AccountLink user={account} compact />
           ) : (
             <Link href="/create" className="rounded-lg bg-[#9b7bff] px-3 py-2 text-sm font-semibold text-[#100d1d]">
               Host
