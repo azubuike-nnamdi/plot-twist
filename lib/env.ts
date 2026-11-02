@@ -12,4 +12,6 @@ export const env = readServerEnv({
   MAILTRAP_SENDER_NAME: process.env.MAILTRAP_SENDER_NAME,
   WEBHOOK_SECRET: process.env.WEBHOOK_SECRET,
   DATABASE_URL_UNPOOLED: process.env.DATABASE_URL_UNPOOLED,
+  ADMIN_EMAIL: process.env.ADMIN_EMAIL,
+  CRON_SECRET: process.env.CRON_SECRET,
 })
