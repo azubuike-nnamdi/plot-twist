@@ -3,6 +3,7 @@ import type { Metadata } from "next"
 import { RegisterForm } from "@/components/forms/auth-form"
 import { SiteFooter } from "@/components/layout/site-footer"
 import { SiteHeader } from "@/components/layout/site-header"
+import { partyChoices } from "@/lib/avatars"
 import { safeNextPath } from "@/lib/security/next-path"
 
 export const metadata: Metadata = { title: "Create account" }
@@ -23,7 +24,7 @@ export default async function RegisterPage({
             An account is required to host, not to play. Friends can join a room with a name.
           </p>
           <div className="mt-6">
-            <RegisterForm next={safeNextPath(params.next, "/")} />
+            <RegisterForm next={safeNextPath(params.next, "/")} choices={partyChoices()} />
           </div>
         </section>
       </main>
