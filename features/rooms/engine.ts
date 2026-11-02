@@ -238,6 +238,7 @@ async function advanceLocked(tx: Tx, roomId: string, now: Date) {
   const active = activePlayers(room)
   const deadline = round.phaseDeadlineAt?.getTime() ?? null
   const timedOut = deadline !== null && now.getTime() >= deadline
+  let openedGuessing = false
   if (round.status === "ANSWERING") {
     const everyoneAnswered =
       active.length > 0 &&
@@ -271,12 +272,14 @@ async function advanceLocked(tx: Tx, roomId: string, now: Date) {
           where: { id: round.id },
           data: { status: "REVEAL", phaseDeadlineAt: null },
         })
+      } else {
+        openedGuessing = true
       }
     }
   }
   room = await loadRoom(tx, roomId)
   const guessing = latestRound(room)
-  if (room.status === "IN_PROGRESS" && guessing?.status === "GUESSING") {
+  if (room.status === "IN_PROGRESS" && guessing?.status === "GUESSING" && !openedGuessing) {
     const guessers = activePlayers(room)
     const answers = guessing.answers
     const finished =
