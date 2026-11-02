@@ -15,6 +15,7 @@ import {
   suspendReportedUser,
   updateSettings,
 } from "@/features/admin/service"
+import { generateQuestions } from "@/features/questions/generate"
 import { requireStaff } from "@/lib/auth/session"
 import { errorMessage } from "@/lib/errors"
 
@@ -40,6 +41,26 @@ export async function saveQuestionAction(
     })
     revalidatePath("/admin/questions")
     return { success: "Question saved." }
+  } catch (error) {
+    return fail(error)
+  }
+}
+
+export async function generateQuestionsAction(
+  _prev: ActionState,
+  formData: FormData
+): Promise<ActionState> {
+  try {
+    const actor = await requireStaff()
+    const saved = await generateQuestions({
+      actorRole: actor.role,
+      actorId: actor.id,
+      categoryId: String(formData.get("categoryId") ?? ""),
+      count: Number(formData.get("count") ?? ""),
+      isAdult: formData.get("isAdult") === "on",
+    })
+    revalidatePath("/admin/questions")
+    return { success: `Saved ${saved} inactive ${saved === 1 ? "question" : "questions"}.` }
   } catch (error) {
     return fail(error)
   }
