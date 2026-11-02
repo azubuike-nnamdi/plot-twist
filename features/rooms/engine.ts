@@ -6,7 +6,8 @@ import { Prisma } from "@prisma/client"
 
 import { answerError } from "@/features/answers/rules"
 import { guessError } from "@/features/guesses/rules"
-import { createRoomCode } from "@/features/rooms/codes"
+import { createRoomCode, formatRoomCode } from "@/features/rooms/codes"
+import { adultPackError } from "@/features/rooms/audience"
 import { choosePrompt, normalizePrompt, PROMPT_MAX_LENGTH, PROMPT_MIN_LENGTH } from "@/features/rooms/prompts"
 import {
   canTransitionRoom,
@@ -19,8 +20,11 @@ import { buildRoomView, type ViewInput } from "@/features/rooms/view"
 import { guessesToScore } from "@/features/scoring/score"
 import { writeAudit } from "@/lib/audit"
 import { prisma } from "@/lib/db/prisma"
+import { env } from "@/lib/env"
+import { sendReportNotice } from "@/lib/mail/messages"
 import { AppError } from "@/lib/errors"
-import { isAvatar, guessTimerFor, REACTIONS } from "@/lib/game/options"
+import { isAvatar, isUploadAvatar, uploadOwnerId } from "@/lib/avatars"
+import { guessTimerFor, REACTIONS } from "@/lib/game/options"
 import type { RoomPreview, RoomView } from "@/types/room"
 
 type Tx = Prisma.TransactionClient
@@ -462,6 +466,7 @@ export async function createRoom(input: {
   answerTimer: number
   guessingTimer: number
   cleanFilter: boolean
+  adultConfirmed: boolean
 }) {
   const config = await settings(prisma)
   const categories = await prisma.category.findMany({
@@ -470,9 +475,12 @@ export async function createRoom(input: {
   if (categories.length !== input.categoryIds.length) {
     throw new AppError("Choose active prompt packs.", "VALIDATION")
   }
-  if (input.cleanFilter && categories.every((category) => category.isAdult)) {
-    throw new AppError("Turn off the clean filter or pick an all-ages pack.", "VALIDATION")
-  }
+  const audience = adultPackError({
+    cleanFilter: input.cleanFilter,
+    adultConfirmed: input.adultConfirmed,
+    hasAdultPack: categories.some((category) => category.isAdult),
+  })
+  if (audience) throw new AppError(audience, "VALIDATION")
   for (let attempt = 0; attempt < 5; attempt += 1) {
     const roomCode = createRoomCode()
     try {
@@ -523,6 +531,16 @@ export async function joinRoom(input: {
 }) {
   if (!isAvatar(input.avatar)) {
     throw new AppError("Choose an avatar.", "VALIDATION")
+  }
+  if (isUploadAvatar(input.avatar)) {
+    const owner = uploadOwnerId(input.avatar)
+    const photo = await prisma.user.findUnique({
+      where: { id: input.userId },
+      select: { avatar: true, avatarData: true },
+    })
+    if (owner !== input.userId || photo?.avatar !== input.avatar || !photo.avatarData) {
+      throw new AppError("Choose an avatar.", "VALIDATION")
+    }
   }
   const displayName = input.displayName.trim()
   if (displayName.length < 2 || displayName.length > 18) {
@@ -914,6 +932,7 @@ export async function updateRoomSettings(input: {
   answerTimer: number
   guessingTimer: number
   cleanFilter: boolean
+  adultConfirmed: boolean
 }) {
   if (guessTimerFor(input.answerTimer) !== input.guessingTimer) {
     throw new AppError("Choose a valid room setup.", "VALIDATION")
@@ -938,9 +957,12 @@ export async function updateRoomSettings(input: {
     if (categories.length !== new Set(input.categoryIds).size) {
       throw new AppError("Choose active prompt packs.", "VALIDATION")
     }
-    if (input.cleanFilter && categories.some((category) => category.isAdult)) {
-      throw new AppError("Turn off the clean filter or drop the 18+ pack.", "VALIDATION")
-    }
+    const audience = adultPackError({
+      cleanFilter: input.cleanFilter,
+      adultConfirmed: input.adultConfirmed,
+      hasAdultPack: categories.some((category) => category.isAdult),
+    })
+    if (audience) throw new AppError(audience, "VALIDATION")
     await tx.roomCategory.deleteMany({ where: { roomId: room.id } })
     await tx.roomCategory.createMany({
       data: input.categoryIds.map((categoryId) => ({
@@ -1108,4 +1130,14 @@ export async function reportAnswer(input: {
       reason,
     },
   })
+  if (!env.ADMIN_EMAIL) return
+  try {
+    await sendReportNotice({
+      to: env.ADMIN_EMAIL,
+      roomCode: formatRoomCode(input.code),
+      reportsUrl: `${env.NEXT_PUBLIC_APP_URL}/admin/reports`,
+    })
+  } catch {
+    console.error("Report notice could not be sent")
+  }
 }
