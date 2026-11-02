@@ -1,7 +1,7 @@
 "use client"
 
 import Link from "next/link"
-import { useActionState } from "react"
+import { useActionState, useState } from "react"
 
 import {
   forgotPasswordAction,
@@ -10,8 +10,8 @@ import {
   resetPasswordAction,
   type ActionState,
 } from "@/app/actions/auth"
+import { AvatarPicker } from "@/components/avatars/avatar-picker"
 import { PasswordField } from "@/components/forms/password-field"
-import { AVATARS } from "@/lib/game/options"
 
 const fieldClass =
   "h-11 w-full rounded-lg border border-border bg-background px-3 text-sm outline-none focus:border-[#9b7bff]"
@@ -66,12 +66,14 @@ export function LoginForm({ next, reset }: { next?: string; reset?: boolean }) {
   )
 }
 
-export function RegisterForm({ next }: { next?: string }) {
+export function RegisterForm({ next, choices }: { next?: string; choices: string[] }) {
   const [state, action, pending] = useActionState(registerAction, null)
+  const [avatar, setAvatar] = useState(choices[0] ?? "")
   return (
     <form action={action} className="grid gap-4">
       <Message state={state} />
       <input type="hidden" name="next" value={next ?? "/"} />
+      <input type="hidden" name="avatar" value={avatar} />
       <label className="grid gap-1 text-sm font-medium">
         Username
         <input name="username" required minLength={3} maxLength={24} autoComplete="username" className={fieldClass} />
@@ -88,17 +90,7 @@ export function RegisterForm({ next }: { next?: string }) {
         Confirm password
         <PasswordField name="confirm" autoComplete="new-password" minLength={8} />
       </label>
-      <fieldset className="grid gap-2">
-        <legend className="text-sm font-medium">Avatar</legend>
-        <div className="flex flex-wrap gap-2">
-          {AVATARS.map((avatar) => (
-            <label key={avatar.id} className="rounded-lg border border-border px-3 py-2 text-sm">
-              <input type="radio" name="avatar" value={avatar.id} defaultChecked={avatar.id === "cipher"} className="mr-2" />
-              {avatar.label}
-            </label>
-          ))}
-        </div>
-      </fieldset>
+      <AvatarPicker value={avatar} choices={choices} onChange={setAvatar} />
       <button disabled={pending} className="h-11 rounded-lg bg-[#ff6b8a] font-semibold text-white disabled:opacity-60">
         {pending ? "Creating account…" : "Create account and play"}
       </button>

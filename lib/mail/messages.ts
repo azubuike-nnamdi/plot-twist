@@ -88,3 +88,29 @@ This link expires in 60 minutes. If you did not ask for a reset, you can ignore 
     html,
   })
 }
+
+export async function sendReportNotice(input: {
+  to: string
+  roomCode: string
+  reportsUrl: string
+}) {
+  const reportsUrl = escapeHtml(input.reportsUrl)
+  const roomCode = escapeHtml(input.roomCode)
+  const text = `A player filed a report in room ${input.roomCode}.
+
+Open the reports queue:
+${input.reportsUrl}`
+  const html = layout(
+    "New report",
+    `<p>A player filed a report in room ${roomCode}.</p>
+     <p>The answer text is not included in this email.</p>
+     <p><a href="${reportsUrl}" style="display:inline-block;background:#ff6b8a;color:#ffffff;text-decoration:none;padding:12px 18px;border-radius:8px;font-weight:700;">Open reports</a></p>
+     <p style="color:#676672;font-size:13px;">${reportsUrl}</p>`
+  )
+  await sendMail({
+    to: input.to,
+    subject: `PlotTwist report in ${input.roomCode}`,
+    text,
+    html,
+  })
+}

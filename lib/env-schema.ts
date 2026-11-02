@@ -12,6 +12,8 @@ const serverEnvSchema = z.object({
   MAILTRAP_SENDER_NAME: z.string().min(1).optional(),
   WEBHOOK_SECRET: z.string().min(1).optional(),
   DATABASE_URL_UNPOOLED: z.string().min(1).optional(),
+  ADMIN_EMAIL: z.email("ADMIN_EMAIL must be a valid email").optional(),
+  CRON_SECRET: z.string().min(16, "CRON_SECRET must be at least 16 characters").optional(),
 })
 
 export type ServerEnv = z.infer<typeof serverEnvSchema>
@@ -29,6 +31,8 @@ export function readServerEnv(
     MAILTRAP_SENDER_NAME: source.MAILTRAP_SENDER_NAME || undefined,
     WEBHOOK_SECRET: source.WEBHOOK_SECRET || undefined,
     DATABASE_URL_UNPOOLED: source.DATABASE_URL_UNPOOLED || undefined,
+    ADMIN_EMAIL: source.ADMIN_EMAIL || undefined,
+    CRON_SECRET: source.CRON_SECRET || undefined,
   })
   if (!parsed.success) {
     const details = parsed.error.issues

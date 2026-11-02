@@ -23,6 +23,7 @@ import Link from "next/link"
 import { useActionState, useMemo, useState } from "react"
 
 import { createRoomAction, type ActionState } from "@/app/actions/game"
+import { AvatarImage } from "@/components/avatars/avatar-image"
 import { cn } from "@/lib/utils"
 import {
   ANSWER_TIMERS,
@@ -68,14 +69,6 @@ const PACK_ORDER = [
 ]
 
 const DEFAULT_PACKS = ["Awkward Confessions", "Wild Hypotheticals"]
-
-const avatarTone: Record<string, string> = {
-  cipher: "bg-[#9b7bff] text-[#100d1d]",
-  joy: "bg-[#ff6b8a] text-[#100d1d]",
-  wildcard: "bg-[#ffd166] text-[#100d1d]",
-  cosmic: "bg-[#34d399] text-[#100d1d]",
-  retro: "bg-[#7dd3fc] text-[#100d1d]",
-}
 
 const panelClass = "rounded-[24px] border border-white/10 bg-[#161222] p-5"
 
@@ -154,15 +147,6 @@ function initialSelection(categories: PromptPack[]) {
     .map((pack) => pack.id)
 }
 
-function initials(name: string) {
-  return name
-    .split(" ")
-    .slice(0, 2)
-    .map((part) => part[0] ?? "")
-    .join("")
-    .toUpperCase()
-}
-
 function Message({ state }: { state: ActionState }) {
   if (!state?.error) return null
   return (
@@ -186,11 +170,13 @@ export function CreateRoomForm({
   const [totalRounds, setTotalRounds] = useState<(typeof ROUND_PRESETS)[number]["rounds"]>(5)
   const [maxPlayers, setMaxPlayers] = useState<(typeof CAPACITY_CHOICES)[number]>(8)
   const [answerTimer, setAnswerTimer] = useState<(typeof ANSWER_TIMERS)[number]>(30)
-  const [cleanFilter, setCleanFilter] = useState(false)
+  const [cleanFilter, setCleanFilter] = useState(true)
+  const [adultConfirmed, setAdultConfirmed] = useState(false)
   const guessingTimer = guessTimerFor(answerTimer)
   const minutes = estimateSessionMinutes(totalRounds, answerTimer)
   const selectedPacks = packs.filter((pack) => selectedIds.includes(pack.id))
-  const eligiblePacks = packs.filter((pack) => !(cleanFilter && pack.isAdult))
+  const adultLocked = cleanFilter || !adultConfirmed
+  const eligiblePacks = packs.filter((pack) => !(adultLocked && pack.isAdult))
   const timerIndex = Math.max(0, ANSWER_TIMERS.indexOf(answerTimer))
   const sliderPercent = (timerIndex / (ANSWER_TIMERS.length - 1)) * 100
   const hostName = host.name.slice(0, 18) || "Host"
@@ -205,15 +191,23 @@ export function CreateRoomForm({
     setSelectedIds(eligiblePacks.map((pack) => pack.id))
   }
 
-  function handleCleanFilter(next: boolean) {
-    setCleanFilter(next)
-    if (!next) return
+  function dropAdultPacks() {
     setSelectedIds((current) =>
       current.filter((id) => {
         const pack = packs.find((item) => item.id === id)
         return pack ? !pack.isAdult : false
       })
     )
+  }
+
+  function handleCleanFilter(next: boolean) {
+    setCleanFilter(next)
+    if (next) dropAdultPacks()
+  }
+
+  function handleAdultConfirmed(next: boolean) {
+    setAdultConfirmed(next)
+    if (!next) dropAdultPacks()
   }
 
   function handleRandomize() {
@@ -377,7 +371,7 @@ export function CreateRoomForm({
                 const style = packStyle(pack)
                 const Icon = style.icon
                 const selected = selectedIds.includes(pack.id)
-                const locked = cleanFilter && pack.isAdult
+                const locked = pack.isAdult && adultLocked
                 return (
                   <label
                     key={pack.id}
@@ -430,6 +424,21 @@ export function CreateRoomForm({
                 )
               })}
             </div>
+            <label className="mt-4 flex cursor-pointer items-start gap-3 rounded-2xl border border-white/10 bg-[#120f1c] px-3.5 py-3">
+              <input
+                type="checkbox"
+                name="adultConfirmed"
+                checked={adultConfirmed}
+                onChange={(event) => handleAdultConfirmed(event.target.checked)}
+                className="mt-1"
+              />
+              <span>
+                <span className="block text-sm font-semibold text-white">This room is 18+</span>
+                <span className="mt-1 block text-xs leading-5 text-[#9c98ad]">
+                  Confirm this before an adult pack can be selected. The clean filter still keeps those packs out while it is on.
+                </span>
+              </span>
+            </label>
           </section>
 
           <section className={panelClass}>
@@ -587,14 +596,7 @@ export function CreateRoomForm({
                   <p className="font-mono text-xs tracking-widest text-[#c4b5fd]">TWST-••••••••</p>
                 </div>
                 <div className="mt-4 flex items-center gap-3">
-                  <span
-                    className={cn(
-                      "flex size-10 items-center justify-center rounded-full text-xs font-bold",
-                      avatarTone[host.avatar ?? "cipher"] ?? avatarTone.cipher
-                    )}
-                  >
-                    {initials(hostName)}
-                  </span>
+                  <AvatarImage avatar={host.avatar && host.avatar.length > 0 ? host.avatar : "cipher"} alt="" className="size-10 shrink-0" />
                   <span className="min-w-0">
                     <span className="block text-[10px] font-semibold tracking-[0.14em] text-[#8d89a0] uppercase">
                       Room host

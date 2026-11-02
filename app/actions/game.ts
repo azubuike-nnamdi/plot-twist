@@ -25,6 +25,7 @@ import {
   reviewRoomPrompt,
 } from "@/features/rooms/engine"
 import { auth } from "@/lib/auth/auth"
+import { isUploadAvatar } from "@/lib/avatars"
 import { getCurrentUser, requireUser, requestIp } from "@/lib/auth/session"
 import { prisma } from "@/lib/db/prisma"
 import { AppError, errorMessage } from "@/lib/errors"
@@ -96,6 +97,7 @@ export async function createRoomAction(
       answerTimer,
       guessingTimer,
       cleanFilter: formData.get("cleanFilter") === "on",
+      adultConfirmed: formData.get("adultConfirmed") === "on",
     })
     redirect(`/room/${code}`)
   } catch (error) {
@@ -126,12 +128,14 @@ export async function joinRoomAction(
       await assertRateLimit(`join:${current.id}`, 10, 15 * 60 * 1000)
     }
     await joinRoom({ userId, code, displayName, avatar })
-    if (!current || current.isAnonymous) {
-      await prisma.user.update({
-        where: { id: userId },
-        data: { name: displayName },
-      })
-    }
+    await prisma.user.update({
+      where: { id: userId },
+      data: {
+        ...(!current || current.isAnonymous ? { name: displayName } : {}),
+        avatar,
+        ...(isUploadAvatar(avatar) ? {} : { avatarMime: null, avatarData: null }),
+      },
+    })
     redirect(`/room/${code}`)
   } catch (error) {
     if (typeof error === "object" && error && "digest" in error) throw error
@@ -262,6 +266,7 @@ export async function updateRoomSettingsAction(
       answerTimer,
       guessingTimer,
       cleanFilter: formData.get("cleanFilter") === "on",
+      adultConfirmed: formData.get("adultConfirmed") === "on",
     })
     revalidatePath(`/room/${code}`)
     return { success: "Room setup saved." }

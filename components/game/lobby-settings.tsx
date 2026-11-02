@@ -37,11 +37,20 @@ export function LobbySettings({
   const [capacity, setCapacity] = useState(view.maxPlayers)
   const [answerTimer, setAnswerTimer] = useState(view.answerSeconds)
   const [cleanFilter, setCleanFilter] = useState(view.cleanFilter)
+  const [adultConfirmed, setAdultConfirmed] = useState(() =>
+    packs.some((pack) => pack.isAdult && view.categoryIds.includes(pack.id))
+  )
   const [selected, setSelected] = useState<string[]>(view.categoryIds)
   const minutes = estimateSessionMinutes(rounds, answerTimer)
+  const adultLocked = cleanFilter || !adultConfirmed
+
+  function dropAdultPacks() {
+    const adultIds = new Set(packs.filter((pack) => pack.isAdult).map((pack) => pack.id))
+    setSelected((current) => current.filter((id) => !adultIds.has(id)))
+  }
 
   function handleTogglePack(id: string, isAdult: boolean) {
-    if (cleanFilter && isAdult) return
+    if (adultLocked && isAdult) return
     setSelected((current) =>
       current.includes(id) ? current.filter((item) => item !== id) : [...current, id]
     )
@@ -49,9 +58,12 @@ export function LobbySettings({
 
   function handleCleanFilter(checked: boolean) {
     setCleanFilter(checked)
-    if (!checked) return
-    const adultIds = new Set(packs.filter((pack) => pack.isAdult).map((pack) => pack.id))
-    setSelected((current) => current.filter((id) => !adultIds.has(id)))
+    if (checked) dropAdultPacks()
+  }
+
+  function handleAdultConfirmed(checked: boolean) {
+    setAdultConfirmed(checked)
+    if (!checked) dropAdultPacks()
   }
 
   return (
@@ -121,7 +133,7 @@ export function LobbySettings({
         <fieldset className="grid gap-2">
           <legend className="text-sm font-medium text-[#f6f6fa]">Prompt packs</legend>
           {packs.map((pack) => {
-            const blocked = cleanFilter && pack.isAdult
+            const blocked = pack.isAdult && adultLocked
             return (
               <label key={pack.id} className={`flex items-center gap-2 text-sm ${blocked ? "text-[#6f6c7b]" : "text-[#f6f6fa]"}`}>
                 <input
@@ -138,6 +150,21 @@ export function LobbySettings({
             )
           })}
         </fieldset>
+        <label className="flex items-start gap-2 text-sm text-[#f6f6fa]">
+          <input
+            type="checkbox"
+            name="adultConfirmed"
+            checked={adultConfirmed}
+            onChange={(event) => handleAdultConfirmed(event.target.checked)}
+            className="mt-1"
+          />
+          <span>
+            This room is 18+
+            <span className="mt-1 block text-xs text-[#afadba]">
+              Required before an adult pack can be selected.
+            </span>
+          </span>
+        </label>
         <label className="flex items-center gap-2 text-sm text-[#f6f6fa]">
           <input
             type="checkbox"

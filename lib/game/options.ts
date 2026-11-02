@@ -1,10 +1,4 @@
-export const AVATARS = [
-  { id: "cipher", label: "Cipher Cool" },
-  { id: "joy", label: "Joy Spark" },
-  { id: "wildcard", label: "Wildcard Nova" },
-  { id: "cosmic", label: "Cosmic Spark" },
-  { id: "retro", label: "Retro Glitch" },
-] as const
+export { isAvatar } from "@/lib/avatars"
 
 export const ROUND_CHOICES = [3, 5, 8] as const
 export const CAPACITY_CHOICES = [6, 8, 12, 16] as const
@@ -33,8 +27,4 @@ export function guessTimerFor(answerTimer: number): (typeof GUESS_TIMERS)[number
 export function estimateSessionMinutes(rounds: number, answerTimer: number) {
   const seconds = rounds * (answerTimer + guessTimerFor(answerTimer))
   return Math.max(1, Math.round(seconds / 60))
-}
-
-export function isAvatar(value: string) {
-  return AVATARS.some((avatar) => avatar.id === value)
 }
