@@ -76,7 +76,7 @@ test("three accounts can finish a short room and rematch", async ({ browser }) =
         timeout: 20_000,
       })
       await page.getByPlaceholder("Write your secret answer").fill(`Answer ${round} from this seat`)
-      await page.getByRole("button", { name: "Lock in my answer" }).click()
+      await page.getByRole("button", { name: "Lock in secret answer" }).click()
     }
     for (const page of [hostPage, secondPage, thirdPage]) {
       await expect(page.getByRole("button", { name: "Lock in vote" }).first()).toBeVisible({
