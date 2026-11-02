@@ -19,12 +19,14 @@ import {
   skipQuestionAction,
   startGameAction,
 } from "@/app/actions/game"
+import { AvatarImage } from "@/components/avatars/avatar-image"
 import { ClaimAccountForm } from "@/components/forms/claim-account-form"
 import type { PromptPack } from "@/components/forms/create-room-form"
 import { useGuessStore } from "@/components/game/guess-store"
 import { LobbySettings } from "@/components/game/lobby-settings"
 import { PlayerPrompts } from "@/components/game/player-prompts"
 import { formatRoomCode } from "@/features/rooms/codes"
+import { showReconnecting } from "@/features/rooms/freshness"
 import { REACTIONS } from "@/lib/game/options"
 import type { RoomView } from "@/types/room"
 
@@ -63,9 +65,29 @@ export function RoomBoard({
     },
     initialData: initial,
     refetchInterval: 4000,
+    refetchIntervalInBackground: false,
   })
   const view = query.data
   const clock = useCountdown(view)
+  const [now, setNow] = useState(() => Date.now())
+  useEffect(() => {
+    const timer = window.setInterval(() => setNow(Date.now()), 1000)
+    return () => window.clearInterval(timer)
+  }, [])
+  const refetchRoom = query.refetch
+  useEffect(() => {
+    function handleVisibility() {
+      if (document.visibilityState === "visible") void refetchRoom()
+    }
+    document.addEventListener("visibilitychange", handleVisibility)
+    return () => document.removeEventListener("visibilitychange", handleVisibility)
+  }, [refetchRoom])
+  const reconnecting = showReconnecting({
+    phase: view.phase,
+    dataUpdatedAt: query.dataUpdatedAt,
+    now,
+    isError: query.isError,
+  })
   const invite = `${origin}/join?code=${view.code}`
 
   if (view.phase === "LOBBY") {
@@ -99,7 +121,11 @@ export function RoomBoard({
             </p>
           ) : null}
         </div>
-        {query.isError ? (
+        {reconnecting ? (
+          <p role="status" className="mt-4 rounded-lg bg-[#f5c16c]/10 px-3 py-2 text-sm text-[#f5c16c]">
+            Reconnecting
+          </p>
+        ) : query.isError ? (
           <p className="mt-4 rounded-lg bg-red-500/10 px-3 py-2 text-sm text-red-300">
             Connection interrupted. Retrying.
           </p>
@@ -114,23 +140,6 @@ export function RoomBoard({
       <PlayerRail view={view} />
     </div>
   )
-}
-
-const avatarTone: Record<string, string> = {
-  cipher: "bg-[#9b7bff] text-[#100d1d]",
-  joy: "bg-[#ff6b8a] text-[#100d1d]",
-  wildcard: "bg-[#ffd166] text-[#100d1d]",
-  cosmic: "bg-[#34d399] text-[#100d1d]",
-  retro: "bg-[#7dd3fc] text-[#100d1d]",
-}
-
-function initials(name: string) {
-  return name
-    .split(" ")
-    .slice(0, 2)
-    .map((part) => part[0] ?? "")
-    .join("")
-    .toUpperCase()
 }
 
 function Lobby({
@@ -316,11 +325,7 @@ function Lobby({
             key={player.id}
             className="flex items-center gap-3 rounded-2xl border border-[#302d41] bg-[#1b1730] px-3 py-3"
           >
-            <span
-              className={`flex size-10 shrink-0 items-center justify-center rounded-full text-sm font-bold ${avatarTone[player.avatar] ?? "bg-[#9b7bff] text-[#100d1d]"}`}
-            >
-              {initials(player.displayName)}
-            </span>
+            <AvatarImage avatar={player.avatar} alt="" className="size-10 shrink-0" />
             <span className="min-w-0 flex-1">
               <span className="flex flex-wrap items-center gap-2">
                 <span className="truncate font-semibold text-[#f6f6fa]">{player.displayName}</span>
@@ -657,6 +662,7 @@ function PlayerRail({ view }: { view: RoomView }) {
       <ul className="mt-3 grid gap-2">
         {view.players.map((player) => (
           <li key={player.id} className="flex items-center gap-2 rounded-xl bg-[#100d1d] px-3 py-2 text-sm">
+            <AvatarImage avatar={player.avatar} alt="" className="size-8 shrink-0" />
             <span className="min-w-0 flex-1 wrap-break-word">
               <span className="block text-[#f6f6fa]">{player.displayName}</span>
               <span className="mt-1 flex flex-wrap gap-1">
