@@ -7,6 +7,7 @@ import { SiteHeader } from "@/components/layout/site-header"
 import { previewRoom } from "@/features/rooms/engine"
 import { parseRoomCode } from "@/features/rooms/codes"
 import { getCurrentUser } from "@/lib/auth/session"
+import { isAvatar, partyChoices } from "@/lib/avatars"
 import { AppError } from "@/lib/errors"
 
 export const metadata: Metadata = { title: "Join room" }
@@ -17,6 +18,8 @@ export default async function JoinPage({
   searchParams: Promise<{ code?: string }>
 }) {
   const user = await getCurrentUser()
+  const choices = partyChoices(user?.avatar)
+  const defaultAvatar = user?.avatar && isAvatar(user.avatar) ? user.avatar : (choices[0] ?? "cipher")
   const params = await searchParams
   const code = params.code ? parseRoomCode(params.code) : ""
   let preview: Awaited<ReturnType<typeof previewRoom>> | null = null
@@ -43,6 +46,8 @@ export default async function JoinPage({
               defaultName={
                 user && !user.isAnonymous ? (user.username ?? user.name).slice(0, 18) : ""
               }
+              defaultAvatar={defaultAvatar}
+              choices={choices}
             />
           </div>
         </section>
