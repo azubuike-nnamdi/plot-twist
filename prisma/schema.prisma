@@ -60,6 +60,8 @@ model User {
   displayUsername String?
   role            String    @default("USER")
   avatar          String?
+  avatarMime      String?
+  avatarData      Bytes?
   status          String    @default("ACTIVE")
   isAnonymous     Boolean   @default(false)
   sessions        Session[]
