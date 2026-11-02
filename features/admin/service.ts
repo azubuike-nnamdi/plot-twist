@@ -73,17 +73,17 @@ export async function saveQuestion(input: {
   if (!category) throw new AppError("Choose a category.", "VALIDATION")
   const question = input.id
     ? await prisma.question.update({
-        where: { id: input.id },
-        data: { text, categoryId: input.categoryId, isAdult: input.isAdult },
-      })
+      where: { id: input.id },
+      data: { text, categoryId: input.categoryId, isAdult: input.isAdult },
+    })
     : await prisma.question.create({
-        data: {
-          text,
-          categoryId: input.categoryId,
-          isAdult: input.isAdult,
-          isActive: true,
-        },
-      })
+      data: {
+        text,
+        categoryId: input.categoryId,
+        isAdult: input.isAdult,
+        isActive: true,
+      },
+    })
   await writeAudit({
     actorId: input.actorId,
     action: input.id ? "question.update" : "question.create",
@@ -135,12 +135,12 @@ export async function saveCategory(input: {
   }
   const category = input.id
     ? await prisma.category.update({
-        where: { id: input.id },
-        data: { name, description, isAdult: input.isAdult },
-      })
+      where: { id: input.id },
+      data: { name, description, isAdult: input.isAdult },
+    })
     : await prisma.category.create({
-        data: { name, description, isAdult: input.isAdult, isActive: true },
-      })
+      data: { name, description, isAdult: input.isAdult, isActive: true },
+    })
   await writeAudit({
     actorId: input.actorId,
     action: input.id ? "category.update" : "category.create",
@@ -172,12 +172,12 @@ export async function searchUsers(query: string) {
   return prisma.user.findMany({
     where: query
       ? {
-          OR: [
-            { email: { contains: query, mode: "insensitive" } },
-            { username: { contains: query, mode: "insensitive" } },
-            { name: { contains: query, mode: "insensitive" } },
-          ],
-        }
+        OR: [
+          { email: { contains: query, mode: "insensitive" } },
+          { username: { contains: query, mode: "insensitive" } },
+          { name: { contains: query, mode: "insensitive" } },
+        ],
+      }
       : {},
     select: userFields,
     orderBy: { createdAt: "desc" },
@@ -239,9 +239,9 @@ export async function listRooms(status: string) {
   return prisma.room.findMany({
     where:
       status === "WAITING" ||
-      status === "IN_PROGRESS" ||
-      status === "COMPLETED" ||
-      status === "CLOSED"
+        status === "IN_PROGRESS" ||
+        status === "COMPLETED" ||
+        status === "CLOSED"
         ? { status }
         : {},
     include: {
@@ -377,8 +377,8 @@ export async function updateSettings(input: {
   minPlayers: number
 }) {
   assertStaff(input.actorRole)
-  if (input.minPlayers < 3 || input.minPlayers > 16) {
-    throw new AppError("Minimum players must be between 3 and 16.", "VALIDATION")
+  if (input.minPlayers < 2 || input.minPlayers > 16) {
+    throw new AppError("Minimum players must be between 2 and 16.", "VALIDATION")
   }
   await prisma.platformSetting.upsert({
     where: { id: "default" },
