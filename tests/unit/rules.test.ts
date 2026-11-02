@@ -271,6 +271,7 @@ describe("anonymity", () => {
         deadlineAt: "2026-10-30T12:01:00.000Z",
         question: "Which snack?",
         categoryName: "Wholesome Nonsense",
+        askedBy: "Bea",
         reactions: [],
         answers: [
           {
@@ -294,10 +295,13 @@ describe("anonymity", () => {
       history: [],
     }
     const view = buildRoomView(input)
+    expect(view.players.find((player) => player.isYou)?.lockedIn).toBe(false)
     expect(view.answers.map((answer) => answer.id)).toEqual(["other"])
     expect(view.answers[0]).not.toHaveProperty("author")
+    expect(view.askedBy).toBeNull()
     expect(JSON.stringify(view.answers)).not.toContain("player-b")
     expect(JSON.stringify(view.answers)).not.toContain("Bea")
+    expect(view.players.map((player) => player.displayName)).toContain("Bea")
   })
 })
 
