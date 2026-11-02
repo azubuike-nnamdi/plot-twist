@@ -7,6 +7,7 @@ import { SiteFooter } from "@/components/layout/site-footer"
 import { SiteHeader } from "@/components/layout/site-header"
 import { formatRoomCode } from "@/features/rooms/codes"
 import { requirePageUser } from "@/lib/auth/session"
+import { isAvatar, partyChoices } from "@/lib/avatars"
 import { prisma } from "@/lib/db/prisma"
 
 export const metadata: Metadata = {
@@ -22,6 +23,8 @@ type PlayedRoom = Prisma.RoomPlayerGetPayload<{
 
 export default async function AccountPage() {
   const user = await requirePageUser("/account")
+  const choices = partyChoices(user.avatar)
+  const avatar = user.avatar && isAvatar(user.avatar) ? user.avatar : (choices[0] ?? "cipher")
   const history: PlayedRoom[] = await prisma.roomPlayer.findMany({
     where: { userId: user.id },
     include: { room: { select: { name: true, roomCode: true, status: true, createdAt: true } } },
@@ -47,7 +50,7 @@ export default async function AccountPage() {
               <h2 className="text-xl font-semibold">Profile</h2>
               <p className="mt-1 text-sm text-muted-foreground">{user.email}</p>
               <div className="mt-4">
-                <ProfileForm name={user.name} avatar={user.avatar ?? "cipher"} />
+                <ProfileForm name={user.name} avatar={avatar} choices={choices} />
               </div>
             </section>
             <section className="rounded-[20px] border border-border bg-card p-6">
