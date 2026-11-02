@@ -25,7 +25,7 @@ The room draws in this order:
 
 A pack question is used once inside a match. Play again does not copy the lobby questions, and it holds back pack questions this group has already heard.
 
-Staff manage the bank at `/admin/questions`. Add a question, choose its pack, mark it 18+ when it belongs in the adult pack, or deactivate it so rooms stop drawing it. `pnpm db:seed` loads the starting packs and skips a question whose text is already in that pack. Generate new questions before a game, save them as inactive, and publish the ones you want to deal. A round does not wait on a newly generated question.
+Staff manage the bank at `/admin/questions`. Add a question, choose its pack, mark it 18+ when it belongs in the adult pack, or deactivate it so rooms stop drawing it. `pnpm db:seed` loads the starting packs and skips a question whose text is already in that pack. Ollama can draft a batch on that page when `ollama` is running locally. Drafts stay inactive until you publish them, and a round does not wait on a newly generated question.
 
 ## Stack
 
