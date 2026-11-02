@@ -1,8 +1,9 @@
 "use client"
 
 import { useQuery } from "@tanstack/react-query"
-import { Check, Copy, Crown } from "lucide-react"
-import { useActionState, useEffect, useState } from "react"
+import { Check, Copy, Crown, Flame, Home, Lock, Share2 } from "lucide-react"
+import Link from "next/link"
+import { useActionState, useCallback, useEffect, useRef, useState, type ReactNode } from "react"
 
 import {
   answerAction,
@@ -25,24 +26,101 @@ import type { PromptPack } from "@/components/forms/create-room-form"
 import { useGuessStore } from "@/components/game/guess-store"
 import { LobbySettings } from "@/components/game/lobby-settings"
 import { PlayerPrompts } from "@/components/game/player-prompts"
+import { ANSWER_MAX_LENGTH } from "@/features/answers/rules"
+import { formatClock, nextClockAnchor, remainingMs, type ClockAnchor } from "@/features/rooms/clock"
+import { CORRECT_GUESS_POINTS } from "@/features/scoring/score"
 import { formatRoomCode } from "@/features/rooms/codes"
 import { showReconnecting } from "@/features/rooms/freshness"
 import { REACTIONS } from "@/lib/game/options"
 import type { RoomView } from "@/types/room"
 
-function useCountdown(view: RoomView) {
+function RoomClock({
+  deadlineAt,
+  serverNow,
+  onElapsed,
+}: {
+  deadlineAt: string | null
+  serverNow: string
+  onElapsed: () => void
+}) {
+  const anchor = useRef<ClockAnchor | null>(null)
+  const onElapsedRef = useRef(onElapsed)
+  const firedDeadline = useRef<string | null>(null)
+  const [clock, setClock] = useState<{ deadlineAt: string; label: string } | null>(null)
+  useEffect(() => {
+    onElapsedRef.current = onElapsed
+  }, [onElapsed])
+  useEffect(() => {
+    if (!deadlineAt) {
+      anchor.current = null
+      return
+    }
+    const shownDeadline = deadlineAt
+    const clientNow = Date.now()
+    anchor.current = nextClockAnchor({
+      previous: anchor.current,
+      deadline: Date.parse(shownDeadline),
+      serverNow: Date.parse(serverNow),
+      clientNow,
+    })
+    const tick = () => {
+      const current = anchor.current
+      if (!current) return
+      const left = remainingMs(current, Date.now())
+      const next = formatClock(left)
+      setClock((previous) => {
+        if (previous?.deadlineAt === shownDeadline && previous.label === next) return previous
+        return { deadlineAt: shownDeadline, label: next }
+      })
+      if (left === 0 && firedDeadline.current !== shownDeadline) {
+        firedDeadline.current = shownDeadline
+        onElapsedRef.current()
+      }
+    }
+    const starter = window.setTimeout(tick, 0)
+    const timer = window.setInterval(tick, 250)
+    return () => {
+      window.clearTimeout(starter)
+      window.clearInterval(timer)
+    }
+  }, [deadlineAt, serverNow])
+  const label = clock?.deadlineAt === deadlineAt ? clock.label : null
+  if (!label) return null
+  return (
+    <p className="font-mono text-3xl tabular-nums" role="timer" aria-label={`${label} left`}>
+      {label}
+    </p>
+  )
+}
+
+function RoomConnection({
+  phase,
+  dataUpdatedAt,
+  isError,
+}: {
+  phase: string
+  dataUpdatedAt: number
+  isError: boolean
+}) {
   const [now, setNow] = useState(() => Date.now())
   useEffect(() => {
     const timer = window.setInterval(() => setNow(Date.now()), 1000)
     return () => window.clearInterval(timer)
   }, [])
-  if (!view.deadlineAt) return null
-  const skew = Date.parse(view.serverNow) - now
-  const remaining = Math.max(0, Date.parse(view.deadlineAt) - (now + skew))
-  const seconds = Math.ceil(remaining / 1000)
-  const minutes = Math.floor(seconds / 60)
-  const rest = String(seconds % 60).padStart(2, "0")
-  return `${minutes}:${rest}`
+  const reconnecting = showReconnecting({ phase, dataUpdatedAt, now, isError })
+  if (reconnecting) {
+    return (
+      <p role="status" className="mt-4 rounded-lg bg-[#f5c16c]/10 px-3 py-2 text-sm text-[#f5c16c]">
+        Reconnecting
+      </p>
+    )
+  }
+  if (!isError) return null
+  return (
+    <p className="mt-4 rounded-lg bg-red-500/10 px-3 py-2 text-sm text-red-300">
+      Connection interrupted. Retrying.
+    </p>
+  )
 }
 
 export function RoomBoard({
@@ -64,17 +142,18 @@ export function RoomBoard({
       return (await response.json()) as RoomView
     },
     initialData: initial,
-    refetchInterval: 4000,
+    refetchInterval: (query) => {
+      const phase = query.state.data?.phase
+      if (phase === "ANSWERING" || phase === "GUESSING") return 1000
+      return 4000
+    },
     refetchIntervalInBackground: false,
   })
   const view = query.data
-  const clock = useCountdown(view)
-  const [now, setNow] = useState(() => Date.now())
-  useEffect(() => {
-    const timer = window.setInterval(() => setNow(Date.now()), 1000)
-    return () => window.clearInterval(timer)
-  }, [])
   const refetchRoom = query.refetch
+  const handleClockElapsed = useCallback(() => {
+    void refetchRoom()
+  }, [refetchRoom])
   useEffect(() => {
     function handleVisibility() {
       if (document.visibilityState === "visible") void refetchRoom()
@@ -82,12 +161,6 @@ export function RoomBoard({
     document.addEventListener("visibilitychange", handleVisibility)
     return () => document.removeEventListener("visibilitychange", handleVisibility)
   }, [refetchRoom])
-  const reconnecting = showReconnecting({
-    phase: view.phase,
-    dataUpdatedAt: query.dataUpdatedAt,
-    now,
-    isError: query.isError,
-  })
   const invite = `${origin}/join?code=${view.code}`
 
   if (view.phase === "LOBBY") {
@@ -103,41 +176,28 @@ export function RoomBoard({
     )
   }
 
+  const clock = (
+    <RoomClock
+      deadlineAt={view.deadlineAt}
+      serverNow={view.serverNow}
+      onElapsed={handleClockElapsed}
+    />
+  )
+
   return (
-    <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_280px]">
-      <section className="relative min-w-0 overflow-hidden rounded-[20px] border border-[#302d41] bg-[#1b1730] p-4 sm:p-5">
-        <div aria-hidden className="absolute inset-x-0 top-0 h-1 bg-linear-to-r from-[#9b7bff] to-[#ff6b8a]" />
-        <div className="flex flex-wrap items-start justify-between gap-3">
-          <div className="min-w-0">
-            <p className="font-mono text-sm break-all text-[#ff6b8a]">{formatRoomCode(view.code)}</p>
-            <h1 className="font-display text-2xl font-bold wrap-break-word sm:text-3xl">{view.name}</h1>
-            <p className="text-sm text-muted-foreground">
-              Round {view.currentRound}/{view.totalRounds} · {view.phase}
-            </p>
-          </div>
-          {clock ? (
-            <p className="font-mono text-3xl" aria-live="polite">
-              {clock}
-            </p>
-          ) : null}
-        </div>
-        {reconnecting ? (
-          <p role="status" className="mt-4 rounded-lg bg-[#f5c16c]/10 px-3 py-2 text-sm text-[#f5c16c]">
-            Reconnecting
-          </p>
-        ) : query.isError ? (
-          <p className="mt-4 rounded-lg bg-red-500/10 px-3 py-2 text-sm text-red-300">
-            Connection interrupted. Retrying.
-          </p>
-        ) : null}
-        <div className="mt-5">
-          {view.phase === "ANSWERING" ? <Answering view={view} /> : null}
-          {view.phase === "GUESSING" ? <Guessing view={view} /> : null}
-          {view.phase === "REVEAL" ? <Reveal view={view} /> : null}
-          {view.phase === "RESULTS" ? <Results view={view} /> : null}
-        </div>
-      </section>
-      <PlayerRail view={view} />
+    <div className="mx-auto grid max-w-xl gap-4">
+      <RoomConnection
+        phase={view.phase}
+        dataUpdatedAt={query.dataUpdatedAt}
+        isError={query.isError}
+      />
+      {view.phase === "ANSWERING" ? (
+        <Answering view={view} clock={clock} onSaved={handleClockElapsed} />
+      ) : null}
+      {view.phase === "GUESSING" ? <Guessing view={view} clock={clock} /> : null}
+      {view.phase === "REVEAL" ? <Reveal view={view} /> : null}
+      {view.phase === "RESULTS" ? <Results view={view} /> : null}
+      {view.youAreHost && view.phase !== "RESULTS" ? <ManagePlayers view={view} /> : null}
     </div>
   )
 }
@@ -288,7 +348,7 @@ function Lobby({
               <Crown aria-hidden className="mt-0.5 size-4 shrink-0 text-[#ffd166]" />
               <span>
                 <span className="font-semibold text-[#f6f6fa]">You are the room host. </span>
-                At least 3 players are needed. When everyone is in and ready, start the game.
+                At least 2 players are needed. When everyone is in and ready, start the game.
               </span>
             </p>
           ) : null}
@@ -405,41 +465,60 @@ function Lobby({
   )
 }
 
-function PromptTitle({ view }: { view: RoomView }) {
+function Answering({
+  view,
+  clock,
+  onSaved,
+}: {
+  view: RoomView
+  clock: ReactNode
+  onSaved: () => void
+}) {
   return (
-    <div>
-      <p
-        className={
-          view.askedBy
-            ? "text-xs font-semibold text-[#9b7bff]"
-            : "text-xs font-semibold tracking-[0.16em] text-[#9b7bff] uppercase"
-        }
-      >
-        {view.askedBy ? `${view.askedBy} asks` : view.categoryName}
-      </p>
-      {view.isReplay ? (
-        <p className="mt-2 text-xs font-semibold text-[#ffd166]">Replay · this group has heard this prompt</p>
-      ) : null}
-      <h2 className="font-display mt-2 text-2xl font-bold wrap-break-word">{view.question}</h2>
-    </div>
-  )
-}
-
-function Answering({ view }: { view: RoomView }) {
-  return (
-    <div>
-      <PromptTitle view={view} />
-      <p className="mt-2 text-sm text-muted-foreground">
-        Your answer stays anonymous until the reveal. {view.submittedCount}/
-        {view.expectedAnswers} locked in.
-      </p>
+    <div className="grid gap-4">
+      <section className="overflow-hidden rounded-[24px] border border-[#302d41] bg-[#161222]">
+        <div aria-hidden className="h-1 bg-linear-to-r from-[#ff6b8a] via-[#c4b5fd] to-[#ffd166]" />
+        <div className="p-4 sm:p-5">
+          <div className="flex items-center justify-between gap-3">
+            <span className="inline-flex items-center gap-1 rounded-full bg-[#ff6b8a]/15 px-2.5 py-1 text-xs font-semibold text-[#ff8fab]">
+              <Flame className="size-3.5" aria-hidden />
+              {view.askedBy ? `${view.askedBy} asks` : view.categoryName}
+            </span>
+            <span className="inline-flex items-center gap-1 text-xs text-[#9c98ad]">
+              <Lock className="size-3.5" aria-hidden />
+              Secret submission
+            </span>
+          </div>
+          <h2 className="font-display mt-4 text-2xl font-bold leading-tight wrap-break-word sm:text-3xl">
+            {view.question}
+          </h2>
+          {view.isReplay ? (
+            <p className="mt-2 text-xs font-semibold text-[#ffd166]">Replay · this group has heard this prompt</p>
+          ) : null}
+          <div className="mt-4 flex flex-wrap items-center justify-between gap-2 text-sm">
+            <span className="text-[#9c98ad]">Anonymous voting next</span>
+            <span className="font-semibold text-[#ffd166]">+{CORRECT_GUESS_POINTS} pts per correct guess</span>
+          </div>
+          <div className="mt-3 flex justify-end">{clock}</div>
+        </div>
+      </section>
       {view.yourAnswer ? (
-        <p className="mt-4 rounded-lg bg-[#9b7bff]/15 px-4 py-3">Locked in.</p>
+        <p className="rounded-[16px] border border-[#302d41] bg-[#161222] px-4 py-3 text-sm text-[#d8d6e3]">
+          Locked in. Your answer stays hidden until the reveal.
+        </p>
       ) : (
-        <AnswerForm code={view.code} />
+        <AnswerForm code={view.code} round={view.currentRound} onSaved={onSaved} />
       )}
+      <SeatRow
+        view={view}
+        title="Lobby status"
+        detail={`${view.submittedCount}/${view.expectedAnswers} locked in`}
+      />
+      <p className="text-center text-sm text-[#9c98ad]">
+        Voting opens when the timer ends or everyone locks an answer in.
+      </p>
       {view.youAreHost ? (
-        <div className="mt-4 flex flex-wrap gap-2">
+        <div className="flex flex-wrap justify-center gap-2">
           <form action={skipQuestionAction.bind(null, view.code)}>
             <button className="h-10 rounded-lg border border-border px-3 text-sm">Skip question</button>
           </form>
@@ -452,43 +531,91 @@ function Answering({ view }: { view: RoomView }) {
   )
 }
 
-function Guessing({ view }: { view: RoomView }) {
+function Guessing({ view, clock }: { view: RoomView; clock: ReactNode }) {
   const selected = useGuessStore((state) => state.selected)
   const select = useGuessStore((state) => state.select)
+  const suspects = view.players.filter((player) => !player.isYou)
+  const lockedCount = view.players.filter((player) => player.lockedIn).length
   return (
     <div className="grid gap-4">
-      <PromptTitle view={view} />
-      <p className="text-sm text-muted-foreground">
-        A correct guess is worth 100 points. You cannot guess yourself.
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <span className="rounded-full bg-[#9b7bff]/15 px-2.5 py-1 text-xs font-semibold text-[#d8c7ff]">
+          {view.answers.length === 0
+            ? "No answers to vote on"
+            : `${view.answers.length} secret ${view.answers.length === 1 ? "answer" : "answers"}`}
+        </span>
+        <span className="text-xs font-semibold text-[#ffd166]">+{CORRECT_GUESS_POINTS} pts on a correct guess</span>
+      </div>
+      {view.answers.length === 0 ? (
+        <p className="rounded-[16px] border border-[#302d41] bg-[#161222] px-4 py-3 text-sm text-[#d8d6e3]">
+          Your own answer stays hidden. Other answers show up here for you to name.
+        </p>
+      ) : null}
+      {view.answers.map((answer, index) => {
+        const pickedId = selected[answer.id] ?? answer.yourGuessId ?? ""
+        const picked = suspects.find((player) => player.id === pickedId)
+        return (
+          <article key={answer.id} className="overflow-hidden rounded-[24px] border border-[#3a3458] bg-[#161222]">
+            <div className="flex items-center justify-between gap-3 border-b border-white/5 px-4 py-3 text-xs text-[#9c98ad]">
+              <span>Answer {index + 1} of {view.answers.length}</span>
+              {index === 0 ? clock : null}
+            </div>
+            <div className="p-4 sm:p-5">
+              <p className="text-xs font-semibold tracking-[0.14em] text-[#9b7bff] uppercase">
+                {view.categoryName}
+              </p>
+              <h2 className="font-display mt-2 text-xl font-bold wrap-break-word">{view.question}</h2>
+              <blockquote className="mt-4 rounded-2xl bg-[#100d1d] px-4 py-4 text-center text-base leading-7 text-[#f6f6fa]">
+                “{answer.text}”
+              </blockquote>
+              <p className="mt-3 text-center text-xs text-[#9c98ad]">
+                Submitted anonymously by a player in this room
+              </p>
+            </div>
+            <div className="border-t border-white/5 p-4 sm:p-5">
+              <div className="flex items-center justify-between gap-3">
+                <h3 className="font-semibold">Who wrote this answer?</h3>
+                <span className="text-xs text-[#9c98ad]">{picked ? "1 selected" : "Pick 1"}</span>
+              </div>
+              <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2">
+                {suspects.map((player) => {
+                  const active = pickedId === player.id
+                  return (
+                    <button
+                      key={player.id}
+                      type="button"
+                      onClick={() => select(answer.id, player.id)}
+                      aria-pressed={active}
+                      className={`flex min-h-16 items-center gap-3 rounded-2xl border px-3 py-2 text-left ${active ? "border-[#9b7bff] bg-[#9b7bff]/10" : "border-[#302d41] bg-[#120f1c]"
+                        }`}
+                    >
+                      <AvatarImage avatar={player.avatar} alt="" className="size-10" />
+                      <span className="min-w-0 flex-1 truncate font-semibold">{player.displayName}</span>
+                      <span
+                        className={`flex size-5 items-center justify-center rounded-full border ${active ? "border-[#9b7bff] bg-[#9b7bff] text-white" : "border-[#3a3450]"
+                          }`}
+                      >
+                        {active ? <Check className="size-3" aria-hidden /> : null}
+                      </span>
+                    </button>
+                  )
+                })}
+              </div>
+              <GuessForm
+                code={view.code}
+                answerId={answer.id}
+                guessedPlayerId={pickedId}
+                suspectName={picked?.displayName ?? ""}
+                locked={Boolean(answer.yourGuessId)}
+              />
+            </div>
+          </article>
+        )
+      })}
+      <p className="text-center text-xs text-[#9c98ad]">
+        The writer’s name stays hidden until everyone has guessed or the timer ends.
       </p>
-      {view.answers.map((answer) => (
-        <article key={answer.id} className="rounded-[16px] border border-border p-4">
-          <p>{answer.text}</p>
-          <div className="mt-3 flex flex-wrap gap-2">
-            {view.players
-              .filter((player) => !player.isYou)
-              .map((player) => (
-                <button
-                  key={player.id}
-                  type="button"
-                  onClick={() => select(answer.id, player.id)}
-                  className={`min-h-11 rounded-lg border px-3 py-2 text-sm ${(selected[answer.id] ?? answer.yourGuessId) === player.id
-                    ? "border-[#ff6b8a] bg-[#ff6b8a]/15"
-                    : "border-border"
-                    }`}
-                >
-                  {player.displayName}
-                </button>
-              ))}
-          </div>
-          <GuessForm
-            code={view.code}
-            answerId={answer.id}
-            guessedPlayerId={selected[answer.id] ?? answer.yourGuessId ?? ""}
-            locked={Boolean(answer.yourGuessId)}
-          />
-        </article>
-      ))}
+      <SeatRow view={view} title="Room guessers" detail={`${lockedCount} of ${view.players.length} locked`} />
     </div>
   )
 }
@@ -496,23 +623,49 @@ function Guessing({ view }: { view: RoomView }) {
 function Reveal({ view }: { view: RoomView }) {
   return (
     <div className="grid gap-4">
-      <PromptTitle view={view} />
-      {view.answers.map((answer) => (
-        <article key={answer.id} className="rounded-[16px] border border-border p-4">
-          <p>{answer.text}</p>
-          <p className="mt-2 font-semibold">
-            {answer.author?.displayName ?? "Unknown"} wrote this.
-          </p>
-          <ul className="mt-2 text-sm text-muted-foreground">
-            {answer.votes?.map((vote) => (
-              <li key={`${answer.id}-${vote.displayName}`}>
-                {vote.displayName} guessed {vote.guessedName} · {vote.points} pts
-              </li>
-            ))}
-          </ul>
-          <ReportForm code={view.code} answerId={answer.id} />
-        </article>
-      ))}
+      {view.answers.map((answer) => {
+        const author = view.players.find((player) => player.id === answer.author?.playerId)
+        const votes = answer.votes ?? []
+        const correct = votes.filter((vote) => vote.correct)
+        const missed = votes.filter((vote) => !vote.correct)
+        const yours = votes.find((vote) => vote.isYou)
+        return (
+          <article key={answer.id} className="grid gap-4">
+            <section className="rounded-[24px] border border-[#302d41] bg-[#161222] p-4 sm:p-5">
+              <p className="text-xs font-semibold tracking-[0.14em] text-[#9b7bff] uppercase">The secret answer</p>
+              <h2 className="font-display mt-2 text-lg font-bold wrap-break-word">{view.question}</h2>
+              <p className="mt-4 text-lg leading-7 wrap-break-word">“{answer.text}”</p>
+            </section>
+            <section className="rounded-[24px] border border-[#9b7bff]/40 bg-[#161222] p-5 text-center">
+              <p className="text-xs font-semibold tracking-[0.14em] text-[#c4b5fd] uppercase">Identity revealed</p>
+              <AvatarImage
+                avatar={author?.avatar ?? "cipher"}
+                alt=""
+                className="mx-auto mt-4 size-20"
+              />
+              <h3 className="font-display mt-3 text-2xl font-bold wrap-break-word">
+                {answer.author?.displayName ?? "Unknown"}
+              </h3>
+              <p className="mt-1 text-sm text-[#9c98ad]">
+                Wrote this. Fooled {missed.length} out of {votes.length} {votes.length === 1 ? "player" : "players"}.
+              </p>
+            </section>
+            {yours ? (
+              <p className="rounded-2xl bg-[#ffd166]/10 px-4 py-3 text-sm text-[#ffd166]">
+                {yours.correct
+                  ? `You guessed correctly. +${yours.points} pts`
+                  : `You guessed ${yours.guessedName}. +${yours.points} pts`}
+              </p>
+            ) : null}
+            <section className="rounded-[24px] border border-[#302d41] bg-[#161222] p-4">
+              <h3 className="text-sm font-semibold">Who voted what</h3>
+              <VoteList title={`Correct (${correct.length})`} votes={correct} tone="text-[#34d399]" />
+              <VoteList title={`Missed it (${missed.length})`} votes={missed} tone="text-[#ff8fab]" />
+            </section>
+            <ReportForm code={view.code} answerId={answer.id} />
+          </article>
+        )
+      })}
       <div className="flex flex-wrap gap-2">
         {REACTIONS.map((emoji) => (
           <form key={emoji} action={reactionAction.bind(null, view.code, emoji)}>
@@ -524,37 +677,85 @@ function Reveal({ view }: { view: RoomView }) {
       </div>
       {view.youAreHost ? (
         <form action={nextRoundAction.bind(null, view.code)}>
-          <button className="h-11 w-full rounded-lg bg-[#ff6b8a] px-4 font-semibold text-white sm:w-auto">
-            {view.currentRound >= view.totalRounds ? "Show final results" : "Next round"}
+          <button className="h-12 w-full rounded-2xl bg-[#9b7bff] px-4 font-semibold text-white">
+            {view.currentRound >= view.totalRounds
+              ? "Show final results"
+              : `Next round (${view.currentRound}/${view.totalRounds})`}
           </button>
         </form>
       ) : (
-        <p className="text-sm text-muted-foreground">Waiting for the host to continue.</p>
+        <p className="text-center text-sm text-[#9c98ad]">Waiting for the host to continue.</p>
       )}
     </div>
   )
 }
 
 function Results({ view }: { view: RoomView }) {
-  const winner = view.leaderboard[0]
+  const [copied, setCopied] = useState(false)
+  const board = view.leaderboard
+  async function handleShare() {
+    const lines = board.map((row, index) => `${index + 1}. ${row.displayName} — ${row.score} pts`)
+    const text = [`${view.name} podium`, formatRoomCode(view.code), ...lines].join("\n")
+    try {
+      await navigator.clipboard.writeText(text)
+      setCopied(true)
+    } catch {
+      setCopied(false)
+    }
+  }
   return (
-    <div>
-      <h2 className="font-display text-2xl font-bold wrap-break-word sm:text-3xl">
-        {winner ? `${winner.displayName} takes the crown` : "Game over"}
-      </h2>
-      <ol className="mt-4 grid gap-2">
-        {view.leaderboard.map((row, index) => (
-          <li key={row.playerId} className="flex items-center justify-between gap-3 rounded-[16px] border border-border px-4 py-3">
-            <span className="min-w-0">
-              <span className="font-mono text-[#ffd166]">{index + 1}</span> {row.displayName}
-              <span className="mt-1 block text-xs text-muted-foreground">{row.title}</span>
+    <div className="grid gap-4">
+      <header className="text-center">
+        <p className="text-xs font-semibold tracking-[0.16em] text-[#ffd166] uppercase">
+          Match concluded · {view.currentRound} of {view.totalRounds} rounds
+        </p>
+        <h2 className="font-display mt-2 text-3xl font-bold">Championship podium</h2>
+        <p className="mt-1 text-sm text-[#9c98ad]">The answers are out. Here are the standings.</p>
+      </header>
+      <div className="grid grid-cols-3 items-end gap-2">
+        {[board[1], board[0], board[2]].map((row, index) => {
+          const place = index === 1 ? 1 : index === 0 ? 2 : 3
+          if (!row) return <div key={place} />
+          const first = place === 1
+          return (
+            <div
+              key={row.playerId}
+              className={`rounded-[20px] border px-2 py-4 text-center ${first ? "border-[#9b7bff] bg-[#9b7bff]/10" : "border-[#302d41] bg-[#161222]"
+                }`}
+            >
+              {first ? <Crown className="mx-auto size-5 text-[#ffd166]" aria-hidden /> : null}
+              <AvatarImage avatar={row.avatar} alt="" className={`mx-auto ${first ? "size-16" : "size-12"}`} />
+              <p className="mt-2 text-xs font-semibold text-[#ffd166]">{place === 1 ? "1st" : place === 2 ? "2nd" : "3rd"}</p>
+              <p className="truncate text-sm font-semibold">{row.displayName}</p>
+              <p className="text-xs text-[#9c98ad]">{row.score} pts</p>
+            </div>
+          )
+        })}
+      </div>
+      <ol className="grid gap-2">
+        {board.map((row, index) => (
+          <li
+            key={row.playerId}
+            className="flex items-center gap-3 rounded-2xl border border-[#302d41] bg-[#161222] px-3 py-3"
+          >
+            <span className="w-5 text-center text-sm font-semibold text-[#9c98ad]">{index + 1}</span>
+            <AvatarImage avatar={row.avatar} alt="" className="size-10" />
+            <span className="min-w-0 flex-1">
+              <span className="block truncate font-semibold">
+                {row.displayName}
+                {row.playerId === view.yourPlayerId ? " (You)" : ""}
+              </span>
+              <span className="block text-xs text-[#9c98ad]">
+                {row.accuracy}% accuracy · {row.correctGuesses} correct
+              </span>
             </span>
-            <span className="shrink-0 font-semibold">{row.score} pts</span>
+            <span className="font-semibold">{row.score} pts</span>
           </li>
         ))}
       </ol>
+      <p className="text-center font-mono text-xs text-[#9c98ad]">{formatRoomCode(view.code)}</p>
       {view.youAreGuest ? (
-        <div className="mt-4 rounded-xl border border-[#302d41] bg-[#100d1d] p-4">
+        <div className="rounded-xl border border-[#302d41] bg-[#100d1d] p-4">
           <h3 className="font-semibold text-[#f6f6fa]">Keep this name and host next time</h3>
           <p className="mt-1 text-sm text-[#afadba]">
             Save {view.yourDisplayName} on an account. Your score in this room stays with you.
@@ -562,18 +763,35 @@ function Results({ view }: { view: RoomView }) {
           <ClaimAccountForm defaultName={view.yourDisplayName} code={view.code} />
         </div>
       ) : null}
-      {view.youAreHost && view.status === "COMPLETED" ? (
-        <div className="mt-4 grid gap-2 sm:flex">
+      <div className="grid gap-2">
+        {view.youAreHost && view.status === "COMPLETED" ? (
           <form action={rematchAction.bind(null, view.code)}>
-            <button className="h-11 w-full rounded-lg bg-[#ff6b8a] px-4 font-semibold text-white sm:w-auto">
-              Play again
-            </button>
+            <button className="h-12 w-full rounded-2xl bg-[#9b7bff] font-semibold text-white">Play again</button>
           </form>
-          <form action={closeRoomAction.bind(null, view.code)}>
-            <button className="h-11 w-full rounded-lg border border-border px-4 sm:w-auto">Close room</button>
-          </form>
+        ) : null}
+        <div className="grid grid-cols-2 gap-2">
+          <button
+            type="button"
+            onClick={() => void handleShare()}
+            className="inline-flex h-11 items-center justify-center gap-2 rounded-2xl border border-[#302d41] text-sm"
+          >
+            <Share2 className="size-4" aria-hidden />
+            {copied ? "Copied" : "Share podium"}
+          </button>
+          <Link
+            href="/"
+            className="inline-flex h-11 items-center justify-center gap-2 rounded-2xl border border-[#302d41] text-sm"
+          >
+            <Home className="size-4" aria-hidden />
+            Return home
+          </Link>
         </div>
-      ) : null}
+        {view.youAreHost && view.status === "COMPLETED" ? (
+          <form action={closeRoomAction.bind(null, view.code)}>
+            <button className="h-11 w-full rounded-2xl border border-border text-sm">Close room</button>
+          </form>
+        ) : null}
+      </div>
     </div>
   )
 }
@@ -583,22 +801,55 @@ function Notice({ state }: { state: { error?: string; success?: string } | null 
   return <p className="rounded-lg bg-red-500/10 px-3 py-2 text-sm text-red-300">{state.error}</p>
 }
 
-function AnswerForm({ code }: { code: string }) {
+const answerDrafts = new Map<string, string>()
+
+function AnswerForm({
+  code,
+  round,
+  onSaved,
+}: {
+  code: string
+  round: number
+  onSaved: () => void
+}) {
+  const draftKey = `${code}:${round}`
   const [state, action, pending] = useActionState(answerAction, null)
+  useEffect(() => {
+    if (state?.success) onSaved()
+  }, [state, onSaved])
+  const [answer, setAnswer] = useState(() => answerDrafts.get(draftKey) ?? "")
+  const [seenKey, setSeenKey] = useState(draftKey)
+  if (seenKey !== draftKey) {
+    setSeenKey(draftKey)
+    setAnswer(answerDrafts.get(draftKey) ?? "")
+  }
   return (
-    <form action={action} className="mt-4 grid gap-3">
+    <form action={action} className="grid gap-3">
       <Notice state={state} />
       <input type="hidden" name="code" value={code} />
+      <div className="flex items-center justify-between gap-3 text-xs font-semibold tracking-[0.12em] text-[#9c98ad] uppercase">
+        <span>Your secret answer</span>
+        <span className="tracking-normal normal-case">{Math.max(0, ANSWER_MAX_LENGTH - answer.length)} left</span>
+      </div>
       <textarea
         name="answer"
         required
-        maxLength={400}
+        maxLength={ANSWER_MAX_LENGTH}
         rows={4}
+        value={answer}
+        onChange={(event) => {
+          answerDrafts.set(draftKey, event.target.value)
+          setAnswer(event.target.value)
+        }}
         className="rounded-[16px] border border-[#302d41] bg-[#100d1d] p-3 text-[#f6f6fa] outline-none placeholder:text-[#afadba] focus:border-[#9b7bff]"
         placeholder="Write your secret answer"
       />
-      <button disabled={pending} className="h-11 rounded-lg bg-[#ff6b8a] font-semibold text-white disabled:opacity-60">
-        {pending ? "Locking in…" : "Lock in my answer"}
+      <button
+        disabled={pending}
+        className="inline-flex h-12 items-center justify-center gap-2 rounded-2xl bg-[#9b7bff] font-semibold text-white disabled:opacity-60"
+      >
+        <Lock className="size-4" aria-hidden />
+        {pending ? "Locking in…" : "Lock in secret answer"}
       </button>
     </form>
   )
@@ -608,25 +859,29 @@ function GuessForm({
   code,
   answerId,
   guessedPlayerId,
+  suspectName,
   locked,
 }: {
   code: string
   answerId: string
   guessedPlayerId: string
+  suspectName: string
   locked: boolean
 }) {
   const [state, action, pending] = useActionState(guessAction, null)
+  const label = locked ? "Vote locked" : suspectName ? `Lock in vote for ${suspectName}` : "Lock in vote"
   return (
-    <form action={action} className="mt-3 grid gap-2">
+    <form action={action} className="mt-4 grid gap-2">
       <Notice state={state} />
       <input type="hidden" name="code" value={code} />
       <input type="hidden" name="answerId" value={answerId} />
       <input type="hidden" name="guessedPlayerId" value={guessedPlayerId} />
       <button
         disabled={pending || locked || !guessedPlayerId}
-        className="h-11 w-full rounded-lg bg-[#9b7bff] px-4 text-sm font-semibold text-white disabled:opacity-50 sm:w-auto"
+        className="inline-flex h-12 w-full items-center justify-center gap-2 rounded-2xl bg-[#9b7bff] font-semibold text-white disabled:opacity-50"
       >
-        {locked ? "Vote locked" : "Lock in vote"}
+        <Lock className="size-4" aria-hidden />
+        {pending ? "Locking in…" : label}
       </button>
     </form>
   )
@@ -655,10 +910,66 @@ function ReportForm({ code, answerId }: { code: string; answerId: string }) {
   )
 }
 
-function PlayerRail({ view }: { view: RoomView }) {
+function VoteList({
+  title,
+  votes,
+  tone,
+}: {
+  title: string
+  votes: { displayName: string; guessedName: string; points: number; correct: boolean }[]
+  tone: string
+}) {
+  if (votes.length === 0) return null
+  return (
+    <div className="mt-3">
+      <p className={`text-xs font-semibold ${tone}`}>{title}</p>
+      <ul className="mt-2 grid gap-2">
+        {votes.map((vote) => (
+          <li key={`${vote.displayName}-${vote.guessedName}`} className="flex items-center justify-between gap-3 text-sm">
+            <span className="min-w-0 truncate">
+              {vote.displayName}
+              {vote.correct ? "" : ` · guessed ${vote.guessedName}`}
+            </span>
+            <span className="shrink-0 text-[#9c98ad]">+{vote.points} pts</span>
+          </li>
+        ))}
+      </ul>
+    </div>
+  )
+}
+
+function SeatRow({ view, title, detail }: { view: RoomView; title: string; detail: string }) {
+  return (
+    <section className="rounded-[24px] border border-[#302d41] bg-[#161222] p-4">
+      <div className="flex items-center justify-between gap-3">
+        <h3 className="text-sm font-semibold">{title}</h3>
+        <span className="rounded-full bg-white/5 px-2.5 py-1 text-xs text-[#d8d6e3]">{detail}</span>
+      </div>
+      <ul className="mt-4 flex flex-wrap justify-center gap-4">
+        {view.players.map((player) => (
+          <li key={player.id} className="w-16 text-center">
+            <span className="relative mx-auto block w-fit">
+              <AvatarImage avatar={player.avatar} alt="" className="size-12" />
+              {player.lockedIn ? (
+                <span className="absolute -right-1 -bottom-1 flex size-5 items-center justify-center rounded-full bg-[#34d399] text-[#10281f]">
+                  <Check className="size-3" aria-hidden />
+                </span>
+              ) : null}
+            </span>
+            <span className="mt-2 block truncate text-xs text-[#d8d6e3]">
+              {player.isYou ? `${player.displayName} (You)` : player.displayName}
+            </span>
+          </li>
+        ))}
+      </ul>
+    </section>
+  )
+}
+
+function ManagePlayers({ view }: { view: RoomView }) {
   return (
     <aside className="rounded-[20px] border border-[#302d41] bg-[#1b1730] p-4">
-      <h2 className="font-semibold">Players</h2>
+      <h2 className="font-semibold">Manage players</h2>
       <ul className="mt-3 grid gap-2">
         {view.players.map((player) => (
           <li key={player.id} className="flex items-center gap-2 rounded-xl bg-[#100d1d] px-3 py-2 text-sm">
