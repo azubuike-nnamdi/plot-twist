@@ -6,7 +6,7 @@ A correct guess is worth 100 points. A wrong guess, a missed guess, and the auth
 
 ## How a match works
 
-1. **Lobby.** A host creates a room, picks prompt packs, and shares a code such as `TWST-XXXXXXXX` or an invite link. An account is required to host, not to play. Friends join with a name and can save it after the match. While the room is waiting, the host can change rounds, timers, room size, and packs. Each seated player can add one question for this room. A match starts once at least 3 players are in the room.
+1. **Lobby.** A host creates a room, picks prompt packs, and shares a code such as `TWST-XXXXXXXX` or an invite link. An account is required to host, not to play. Friends join with a name and can save it after the match. While the room is waiting, the host can change rounds, timers, room size, and packs. Each seated player can add one question for this room. A match starts once at least 2 players are in the room.
 2. **Answers.** Each player submits one answer. Authors stay hidden.
 3. **Guesses.** Answers are shuffled. Players vote for the author of each answer and cannot vote for themselves.
 4. **Reveal.** Authors are shown, scores update, and the host moves to the next round.
@@ -25,7 +25,7 @@ The room draws in this order:
 
 A pack question is used once inside a match. Play again does not copy the lobby questions, and it holds back pack questions this group has already heard.
 
-Staff manage the bank at `/admin/questions`. Add a question, choose its pack, mark it 18+ when it belongs in the adult pack, or deactivate it so rooms stop drawing it. `pnpm db:seed` loads the starting packs and skips a question whose text is already in that pack. Generate new questions before a game, save them as inactive, and publish the ones you want to deal. A round does not wait on a newly generated question.
+Staff manage the bank at `/admin/questions`. Add a question, choose its pack, mark it 18+ when it belongs in the adult pack, or deactivate it so rooms stop drawing it. `pnpm db:seed` loads the starting packs and skips a question whose text is already in that pack. Ollama can draft a batch on that page when `ollama` is running locally. Drafts stay inactive until you publish them, and a round does not wait on a newly generated question.
 
 ## Stack
 

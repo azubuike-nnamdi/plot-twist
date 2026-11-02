@@ -85,6 +85,21 @@ function titleFor(index: number) {
   return titles[index] ?? "Party Player"
 }
 
+function hasLockedIn(phase: RoomPhase, playerId: string, round: ViewInput["round"]) {
+  if (!round) return false
+  if (phase === "ANSWERING") {
+    return round.answers.some((answer) => answer.playerId === playerId)
+  }
+  if (phase === "GUESSING") {
+    const needed = round.answers.filter((answer) => answer.playerId !== playerId)
+    return (
+      needed.length > 0 &&
+      needed.every((answer) => answer.guesses.some((guess) => guess.guesserId === playerId))
+    )
+  }
+  return false
+}
+
 export function buildRoomView(input: ViewInput): RoomView {
   const you = input.players.find((player) => player.userId === input.viewerUserId)
   if (!you) {
@@ -108,41 +123,42 @@ export function buildRoomView(input: ViewInput): RoomView {
   const playersById = new Map(input.players.map((player) => [player.id, player]))
   const answers: AnswerView[] = showTexts
     ? [...(round?.answers ?? [])]
-        .sort((left, right) => left.sortKey - right.sortKey)
-        .filter((answer) => answer.playerId !== you.id || showAuthors)
-        .map((answer) => {
-          const author = playersById.get(answer.playerId)
-          const presented = presentAnswer({
-            id: answer.id,
-            text: answer.text,
-            removed: answer.removed,
-            phase: round?.status ?? "PENDING",
-            author: {
-              playerId: answer.playerId,
-              displayName: author?.displayName ?? "Player",
-            },
-          })
-          const yourGuess = answer.guesses.find(
-            (guess) => guess.guesserId === you.id
-          )
-          const view: AnswerView = {
-            id: presented.id,
-            text: presented.text,
-            yourGuessId: yourGuess?.guessedPlayerId ?? null,
-          }
-          if (presented.author && showAuthors) {
-            view.author = presented.author
-            view.votes = answer.guesses.map((guess) => ({
-              displayName:
-                playersById.get(guess.guesserId)?.displayName ?? "Player",
-              guessedName:
-                playersById.get(guess.guessedPlayerId)?.displayName ?? "Player",
-              correct: guess.isCorrect === true,
-              points: guess.pointsAwarded ?? 0,
-            }))
-          }
-          return view
+      .sort((left, right) => left.sortKey - right.sortKey)
+      .filter((answer) => answer.playerId !== you.id || showAuthors)
+      .map((answer) => {
+        const author = playersById.get(answer.playerId)
+        const presented = presentAnswer({
+          id: answer.id,
+          text: answer.text,
+          removed: answer.removed,
+          phase: round?.status ?? "PENDING",
+          author: {
+            playerId: answer.playerId,
+            displayName: author?.displayName ?? "Player",
+          },
         })
+        const yourGuess = answer.guesses.find(
+          (guess) => guess.guesserId === you.id
+        )
+        const view: AnswerView = {
+          id: presented.id,
+          text: presented.text,
+          yourGuessId: yourGuess?.guessedPlayerId ?? null,
+        }
+        if (presented.author && showAuthors) {
+          view.author = presented.author
+          view.votes = answer.guesses.map((guess) => ({
+            displayName:
+              playersById.get(guess.guesserId)?.displayName ?? "Player",
+            guessedName:
+              playersById.get(guess.guessedPlayerId)?.displayName ?? "Player",
+            correct: guess.isCorrect === true,
+            points: guess.pointsAwarded ?? 0,
+            isYou: guess.guesserId === you.id,
+          }))
+        }
+        return view
+      })
     : []
   const reactionCounts = new Map<string, number>()
   for (const reaction of round?.reactions ?? []) {
@@ -187,8 +203,8 @@ export function buildRoomView(input: ViewInput): RoomView {
         ? (round?.deadlineAt ?? null)
         : null,
     categories: input.categories,
-    prompts: input.prompts ?? [],
-    askedBy: input.round?.askedBy ?? null,
+    prompts: phase === "LOBBY" ? (input.prompts ?? []) : [],
+    askedBy: showAuthors ? (input.round?.askedBy ?? null) : null,
     isReplay: input.round?.isReplay === true && phase !== "LOBBY",
     categoryIds: input.categoryIds ?? [],
     cleanFilter: input.cleanFilter === true,
@@ -201,6 +217,7 @@ export function buildRoomView(input: ViewInput): RoomView {
       isHost: player.userId === input.hostId,
       isYou: player.userId === input.viewerUserId,
       ready: player.status === "READY",
+      lockedIn: hasLockedIn(phase, player.id, round),
     })),
     question: round && phase !== "LOBBY" ? round.question : null,
     categoryName: round && phase !== "LOBBY" ? round.categoryName : null,

@@ -325,7 +325,7 @@ model PlatformSetting {
   defaultGuessingTimer  Int    @default(45)
   defaultMaxPlayers     Int    @default(8)
   roomLifetimeMinutes   Int    @default(180)
-  minPlayers            Int    @default(3)
+  minPlayers            Int    @default(2)
 }
 
 model RateLimitBucket {

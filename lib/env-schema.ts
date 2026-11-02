@@ -14,6 +14,8 @@ const serverEnvSchema = z.object({
   DATABASE_URL_UNPOOLED: z.string().min(1).optional(),
   ADMIN_EMAIL: z.email("ADMIN_EMAIL must be a valid email").optional(),
   CRON_SECRET: z.string().min(16, "CRON_SECRET must be at least 16 characters").optional(),
+  OLLAMA_BASE_URL: z.url("OLLAMA_BASE_URL must be a valid URL").optional(),
+  OLLAMA_MODEL: z.string().min(1).optional(),
 })
 
 export type ServerEnv = z.infer<typeof serverEnvSchema>
@@ -33,6 +35,8 @@ export function readServerEnv(
     DATABASE_URL_UNPOOLED: source.DATABASE_URL_UNPOOLED || undefined,
     ADMIN_EMAIL: source.ADMIN_EMAIL || undefined,
     CRON_SECRET: source.CRON_SECRET || undefined,
+    OLLAMA_BASE_URL: source.OLLAMA_BASE_URL || undefined,
+    OLLAMA_MODEL: source.OLLAMA_MODEL || undefined,
   })
   if (!parsed.success) {
     const details = parsed.error.issues

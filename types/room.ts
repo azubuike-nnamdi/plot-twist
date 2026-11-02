@@ -14,6 +14,7 @@ export type RoomPlayerView = {
   isHost: boolean
   isYou: boolean
   ready: boolean
+  lockedIn: boolean
 }
 
 export type RevealedVote = {
@@ -21,6 +22,7 @@ export type RevealedVote = {
   guessedName: string
   correct: boolean
   points: number
+  isYou: boolean
 }
 
 export type AnswerView = {

@@ -4,6 +4,7 @@ import { useActionState } from "react"
 
 import {
   closeRoomAction,
+  generateQuestionsAction,
   saveCategoryAction,
   saveQuestionAction,
   settingsAction,
@@ -47,6 +48,43 @@ export function QuestionForm({
       </label>
       <button disabled={pending} className="h-11 rounded-lg bg-[#ff6b8a] font-semibold text-white">
         Save question
+      </button>
+    </form>
+  )
+}
+
+export function GenerateQuestionsForm({
+  categories,
+}: {
+  categories: { id: string; name: string }[]
+}) {
+  const [state, action, pending] = useActionState(generateQuestionsAction, null)
+  return (
+    <form action={action} className="grid gap-3">
+      <h2 className="font-semibold">Generate with Ollama</h2>
+      <p className="text-sm text-muted-foreground">
+        Drafts stay inactive until you publish them. A live round does not wait on this.
+      </p>
+      <Message state={state} />
+      <select name="categoryId" required className={fieldClass} defaultValue="">
+        <option value="" disabled>
+          Category
+        </option>
+        {categories.map((category) => (
+          <option key={category.id} value={category.id}>
+            {category.name}
+          </option>
+        ))}
+      </select>
+      <label className="grid gap-1 text-sm">
+        How many
+        <input name="count" type="number" min={1} max={8} defaultValue={5} required className={fieldClass} />
+      </label>
+      <label className="flex items-center gap-2 text-sm">
+        <input type="checkbox" name="isAdult" /> 18+
+      </label>
+      <button disabled={pending} className="h-11 rounded-lg bg-[#9b7bff] font-semibold text-white">
+        {pending ? "Generating…" : "Generate questions"}
       </button>
     </form>
   )

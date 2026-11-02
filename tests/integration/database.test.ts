@@ -23,7 +23,7 @@ describe("postgres", () => {
       update: {},
       create: { id: "default" },
     })
-    expect(settings.minPlayers).toBeGreaterThanOrEqual(3)
+    expect(settings.minPlayers).toBeGreaterThanOrEqual(2)
     expect(settings.defaultRounds).toBeGreaterThan(0)
   })
 })

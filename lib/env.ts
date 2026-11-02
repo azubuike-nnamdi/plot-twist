@@ -14,4 +14,6 @@ export const env = readServerEnv({
   DATABASE_URL_UNPOOLED: process.env.DATABASE_URL_UNPOOLED,
   ADMIN_EMAIL: process.env.ADMIN_EMAIL,
   CRON_SECRET: process.env.CRON_SECRET,
+  OLLAMA_BASE_URL: process.env.OLLAMA_BASE_URL,
+  OLLAMA_MODEL: process.env.OLLAMA_MODEL,
 })

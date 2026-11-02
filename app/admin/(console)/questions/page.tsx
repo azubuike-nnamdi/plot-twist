@@ -1,5 +1,5 @@
 import { questionActiveAction } from "@/app/actions/admin"
-import { QuestionForm } from "@/components/admin/staff-forms"
+import { GenerateQuestionsForm, QuestionForm } from "@/components/admin/staff-forms"
 import { listCategories, listQuestions } from "@/features/admin/service"
 
 export default async function QuestionsPage({
@@ -24,9 +24,14 @@ export default async function QuestionsPage({
         </select>
         <button className="h-11 rounded-lg border border-border bg-card px-4 text-sm">Filter</button>
       </form>
-      <section className="rounded-[20px] border border-border bg-card p-5">
-        <QuestionForm categories={categories} />
-      </section>
+      <div className="grid gap-4 lg:grid-cols-2">
+        <section className="rounded-[20px] border border-border bg-card p-5">
+          <QuestionForm categories={categories} />
+        </section>
+        <section className="rounded-[20px] border border-border bg-card p-5">
+          <GenerateQuestionsForm categories={categories} />
+        </section>
+      </div>
       <ul className="grid gap-2">
         {questions.map((question) => (
           <li key={question.id} className="flex items-center justify-between gap-3 rounded-[16px] border border-border bg-card px-4 py-3 text-sm">
