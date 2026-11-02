@@ -1,8 +1,10 @@
 "use server"
 
+import { revalidatePath } from "next/cache"
 import { cookies, headers } from "next/headers"
 import { redirect } from "next/navigation"
 
+import { syncActiveSeats } from "@/features/avatars/sync"
 import { claimGuestAccount, isEmailTakenMessage } from "@/features/auth/claim"
 import { CLAIM_GUEST_COOKIE, CLAIM_ROOM_COOKIE, transferGuestSeat } from "@/features/auth/guest-transfer"
 import { auth } from "@/lib/auth/auth"
@@ -10,7 +12,16 @@ import { getCurrentUser, requestIp } from "@/lib/auth/session"
 import { prisma } from "@/lib/db/prisma"
 import { env } from "@/lib/env"
 import { AppError, errorMessage } from "@/lib/errors"
-import { isAvatar } from "@/lib/game/options"
+import {
+  AVATAR_MAX_BYTES,
+  isGeneratedAvatar,
+  isUploadAvatar,
+  randomAvatarSeed,
+  randomPhotoVersion,
+  readAvatarPhoto,
+  uploadAvatarId,
+  uploadOwnerId,
+} from "@/lib/avatars"
 import { sendWelcomeEmail } from "@/lib/mail/messages"
 import { assertRateLimit } from "@/lib/security/rate-limit"
 import { safeNextPath } from "@/lib/security/next-path"
@@ -19,6 +30,8 @@ export type ActionState = {
   error?: string
   success?: string
   loginHref?: string
+  avatar?: string
+  name?: string
 } | null
 
 const WINDOW = 15 * 60 * 1000
@@ -35,7 +48,7 @@ export async function registerAction(
   const username = field(formData, "username")
   const password = String(formData.get("password") ?? "")
   const confirm = String(formData.get("confirm") ?? "")
-  const avatar = field(formData, "avatar") || "cipher"
+  const avatar = field(formData, "avatar") || randomAvatarSeed()
   const next = safeNextPath(formData.get("next"), "/")
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
     return { error: "Enter a valid email address." }
@@ -47,7 +60,7 @@ export async function registerAction(
     return { error: "Use a password of at least 8 characters." }
   }
   if (password !== confirm) return { error: "Passwords do not match." }
-  if (!isAvatar(avatar)) return { error: "Choose an avatar." }
+  if (!isGeneratedAvatar(avatar)) return { error: "Choose an avatar." }
   try {
     await assertRateLimit(`register:${await requestIp()}`, 5, 60 * 60 * 1000)
     await auth.api.signUpEmail({
@@ -93,13 +106,13 @@ export async function loginAction(
     const headerStore = await headers()
     const signedIn = identifier.includes("@")
       ? await auth.api.signInEmail({
-          body: { email: identifier.toLowerCase(), password },
-          headers: headerStore,
-        })
+        body: { email: identifier.toLowerCase(), password },
+        headers: headerStore,
+      })
       : await auth.api.signInUsername({
-          body: { username: identifier, password },
-          headers: headerStore,
-        })
+        body: { username: identifier, password },
+        headers: headerStore,
+      })
     if ("status" in signedIn.user && signedIn.user.status !== "ACTIVE") {
       await auth.api.signOut({ headers: await headers() })
       return { error: "This account is suspended." }
@@ -242,6 +255,8 @@ export async function resetPasswordAction(
   redirect("/login?reset=1")
 }
 
+const PHOTO_ERROR = "Use a PNG, JPEG, or JPG image of 1 MB or less."
+
 export async function updateProfileAction(
   _prev: ActionState,
   formData: FormData
@@ -253,12 +268,59 @@ export async function updateProfileAction(
   if (name.length < 2 || name.length > 32) {
     return { error: "Display names are 2 to 32 characters." }
   }
-  if (!isAvatar(avatar)) return { error: "Choose an avatar." }
-  await prisma.user.update({
-    where: { id: session.user.id },
-    data: { name, displayUsername: name, avatar },
-  })
-  return { success: "Profile saved." }
+  const photo = formData.get("photo")
+  const hasPhoto = photo instanceof File && photo.size > 0
+  let nextAvatar = avatar
+  let mime: "image/png" | "image/jpeg" | null = null
+  let bytes: Uint8Array<ArrayBuffer> | null = null
+  let clearPhoto = false
+  if (hasPhoto) {
+    const filename = photo.name.toLowerCase()
+    if (!/\.(png|jpe?g)$/.test(filename) || photo.size > AVATAR_MAX_BYTES) {
+      return { error: PHOTO_ERROR }
+    }
+    const parsed = readAvatarPhoto(new Uint8Array(await photo.arrayBuffer()))
+    if (!parsed) return { error: PHOTO_ERROR }
+    nextAvatar = uploadAvatarId(session.user.id, randomPhotoVersion())
+    mime = parsed.mime
+    const copy = new ArrayBuffer(parsed.bytes.byteLength)
+    new Uint8Array(copy).set(parsed.bytes)
+    bytes = new Uint8Array(copy)
+  } else if (isUploadAvatar(avatar)) {
+    if (uploadOwnerId(avatar) !== session.user.id) return { error: "Choose an avatar." }
+    const existing = await prisma.user.findUnique({
+      where: { id: session.user.id },
+      select: { avatar: true },
+    })
+    if (existing?.avatar !== avatar) return { error: "Choose an avatar." }
+  } else if (isGeneratedAvatar(avatar)) {
+    nextAvatar = avatar
+    clearPhoto = true
+  } else {
+    return { error: "Choose an avatar." }
+  }
+  try {
+    await assertRateLimit(`profile:${session.user.id}`, 20, WINDOW)
+    await prisma.user.update({
+      where: { id: session.user.id },
+      data: {
+        name,
+        displayUsername: name,
+        avatar: nextAvatar,
+        ...(bytes && mime
+          ? { avatarMime: mime, avatarData: bytes }
+          : clearPhoto
+            ? { avatarMime: null, avatarData: null }
+            : {}),
+      },
+    })
+    await syncActiveSeats({ userId: session.user.id, name, avatar: nextAvatar })
+  } catch (error) {
+    if (error instanceof AppError) return { error: error.message }
+    return { error: "Could not save your profile." }
+  }
+  revalidatePath("/", "layout")
+  return { success: "Profile saved.", avatar: nextAvatar, name }
 }
 
 export async function changePasswordAction(
@@ -314,6 +376,8 @@ export async function deleteAccountAction(
       displayUsername: null,
       image: null,
       avatar: null,
+      avatarMime: null,
+      avatarData: null,
     },
   })
   await prisma.account.updateMany({
