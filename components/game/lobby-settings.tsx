@@ -1,8 +1,9 @@
 "use client"
 
-import { useActionState, useState } from "react"
+import { useActionState, useEffect, useState } from "react"
 
 import { updateRoomSettingsAction, type ActionState } from "@/app/actions/game"
+import { useRefreshRoom } from "@/components/game/use-room-refresh"
 import type { PromptPack } from "@/components/forms/create-room-form"
 import {
   ANSWER_TIMERS,
@@ -33,6 +34,10 @@ export function LobbySettings({
   packs: PromptPack[]
 }) {
   const [state, action, pending] = useActionState(updateRoomSettingsAction, null)
+  const refresh = useRefreshRoom(view.code)
+  useEffect(() => {
+    if (state?.success) void refresh()
+  }, [state, refresh])
   const [rounds, setRounds] = useState(view.totalRounds)
   const [capacity, setCapacity] = useState(view.maxPlayers)
   const [answerTimer, setAnswerTimer] = useState(view.answerSeconds)
