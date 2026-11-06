@@ -1,6 +1,12 @@
 import { describe, expect, it } from "vitest"
 
-import { cleanupCutoffs, GUEST_TTL_MS, RATE_LIMIT_TTL_MS } from "@/features/maintenance/cutoffs"
+import {
+  cleanupCutoffs,
+  GUEST_TTL_MS,
+  RATE_LIMIT_TTL_MS,
+  ROOM_IDLE_CLOSE_MS,
+  ROOM_RETENTION_MS,
+} from "@/features/maintenance/cutoffs"
 import { adultPackError } from "@/features/rooms/audience"
 import { showReconnecting } from "@/features/rooms/freshness"
 
@@ -27,6 +33,15 @@ describe("cleanup cutoffs", () => {
     const cutoffs = cleanupCutoffs(now)
     expect(now.getTime() - cutoffs.guestCreatedBefore.getTime()).toBe(GUEST_TTL_MS)
     expect(now.getTime() - cutoffs.bucketWindowBefore.getTime()).toBe(RATE_LIMIT_TTL_MS)
+  })
+
+  it("closes idle matches after 6 hours and purges rooms after 30 days", () => {
+    const now = new Date("2026-11-02T12:00:00.000Z")
+    const cutoffs = cleanupCutoffs(now)
+    expect(now.getTime() - cutoffs.idleRoomBefore.getTime()).toBe(ROOM_IDLE_CLOSE_MS)
+    expect(now.getTime() - cutoffs.roomRetainedAfter.getTime()).toBe(ROOM_RETENTION_MS)
+    expect(ROOM_IDLE_CLOSE_MS).toBe(6 * 60 * 60 * 1000)
+    expect(ROOM_RETENTION_MS).toBe(30 * 24 * 60 * 60 * 1000)
   })
 })
 
