@@ -16,6 +16,13 @@ const serverEnvSchema = z.object({
   CRON_SECRET: z.string().min(16, "CRON_SECRET must be at least 16 characters").optional(),
   OLLAMA_BASE_URL: z.url("OLLAMA_BASE_URL must be a valid URL").optional(),
   OLLAMA_MODEL: z.string().min(1).optional(),
+  PUSHER_APP_ID: z.string().min(1).optional(),
+  PUSHER_KEY: z.string().min(1).optional(),
+  PUSHER_SECRET: z.string().min(1).optional(),
+  PUSHER_CLUSTER: z
+    .string()
+    .regex(/^[a-z0-9-]+$/, "PUSHER_CLUSTER must look like eu or us2")
+    .optional(),
 })
 
 export type ServerEnv = z.infer<typeof serverEnvSchema>
@@ -37,6 +44,10 @@ export function readServerEnv(
     CRON_SECRET: source.CRON_SECRET || undefined,
     OLLAMA_BASE_URL: source.OLLAMA_BASE_URL || undefined,
     OLLAMA_MODEL: source.OLLAMA_MODEL || undefined,
+    PUSHER_APP_ID: source.PUSHER_APP_ID || undefined,
+    PUSHER_KEY: source.PUSHER_KEY || undefined,
+    PUSHER_SECRET: source.PUSHER_SECRET || undefined,
+    PUSHER_CLUSTER: source.PUSHER_CLUSTER || undefined,
   })
   if (!parsed.success) {
     const details = parsed.error.issues
