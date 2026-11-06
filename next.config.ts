@@ -20,7 +20,8 @@ const securityHeaders = [
       "style-src 'self' 'unsafe-inline'",
       "img-src 'self' data: blob:",
       "font-src 'self'",
-      "connect-src 'self'",
+      // Pusher Channels sockets for live room updates.
+      "connect-src 'self' wss://*.pusher.com https://*.pusher.com",
       "frame-ancestors 'none'",
       "base-uri 'self'",
       "form-action 'self'",
