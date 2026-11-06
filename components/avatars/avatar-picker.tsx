@@ -49,7 +49,7 @@ export function AvatarPicker({
                 className="sr-only"
                 aria-label={`Avatar ${index + 1}`}
               />
-              <AvatarImage avatar={seed} alt="" className="size-16" />
+              <AvatarImage avatar={seed} alt="" className="size-[70%]" />
               {selected ? (
                 <span className="absolute top-2 right-2 flex size-5 items-center justify-center rounded-full bg-[#c4b5fd] text-[#24143a]">
                   <Check aria-hidden className="size-3" />
