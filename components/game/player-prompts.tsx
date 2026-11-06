@@ -1,8 +1,9 @@
 "use client"
 
-import { useActionState } from "react"
+import { useActionState, useEffect } from "react"
 
 import { reviewPromptAction, submitPromptAction, type ActionState } from "@/app/actions/game"
+import { useRefreshRoom, useRoomAction } from "@/components/game/use-room-refresh"
 import { PROMPT_MAX_LENGTH, PROMPT_MIN_LENGTH } from "@/features/rooms/prompts"
 import type { RoomView } from "@/types/room"
 
@@ -20,6 +21,11 @@ function Message({ state }: { state: ActionState }) {
 
 export function PlayerPrompts({ view }: { view: RoomView }) {
   const [state, action, pending] = useActionState(submitPromptAction, null)
+  const refresh = useRefreshRoom(view.code)
+  const act = useRoomAction(view.code)
+  useEffect(() => {
+    if (state?.success) void refresh()
+  }, [state, refresh])
   const yours = view.prompts.find((prompt) => prompt.isYours)
   const ready = view.prompts.filter((prompt) => prompt.status === "ACCEPTED").length
   return (
@@ -62,14 +68,14 @@ export function PlayerPrompts({ view }: { view: RoomView }) {
               </p>
               <div className="mt-2 flex flex-wrap gap-2">
                 {view.youAreHost && prompt.status === "PENDING" ? (
-                  <form action={reviewPromptAction.bind(null, view.code, prompt.id, "ACCEPTED")}>
+                  <form action={act(reviewPromptAction, view.code, prompt.id, "ACCEPTED")}>
                     <button className="h-9 rounded-lg bg-[#9b7bff] px-3 text-xs font-semibold text-[#100d1d]">
                       Approve
                     </button>
                   </form>
                 ) : null}
                 {view.youAreHost || prompt.isYours ? (
-                  <form action={reviewPromptAction.bind(null, view.code, prompt.id, "REMOVED")}>
+                  <form action={act(reviewPromptAction, view.code, prompt.id, "REMOVED")}>
                     <button className="h-9 rounded-lg border border-[#302d41] px-3 text-xs text-[#f6f6fa]">
                       Remove
                     </button>

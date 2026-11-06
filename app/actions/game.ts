@@ -1,6 +1,5 @@
 "use server"
 
-import { revalidatePath } from "next/cache"
 import { headers } from "next/headers"
 import { redirect } from "next/navigation"
 
@@ -118,7 +117,7 @@ export async function joinRoomAction(
     const current = await getCurrentUser()
     let userId = current?.id ?? ""
     if (!current) {
-      await assertRateLimit(`join-guest:${await requestIp()}`, 10, 15 * 60 * 1000)
+      await assertRateLimit(`join-guest:${await requestIp()}`, 40, 15 * 60 * 1000)
       const created = await auth.api.signInAnonymous({ headers: await headers() })
       userId = created.user.id
     } else {
@@ -147,13 +146,11 @@ async function hostCall(code: string, run: (userId: string, roomCode: string) =>
   const user = await requireUser()
   const roomCode = parseRoomCode(code)
   await run(user.id, roomCode)
-  revalidatePath(`/room/${roomCode}`)
 }
 
 export async function readyAction(code: string, ready: boolean) {
   const user = await requireUser()
   await setReady(user.id, parseRoomCode(code), ready)
-  revalidatePath(`/room/${parseRoomCode(code)}`)
 }
 
 export async function leaveAction(code: string) {
@@ -179,7 +176,6 @@ export async function answerAction(
     await assertRateLimit(`answer:${user.id}`, 30, 60 * 1000)
     const code = parseRoomCode(String(formData.get("code") ?? ""))
     await submitAnswer(user.id, code, String(formData.get("answer") ?? ""))
-    revalidatePath(`/room/${code}`)
     return { success: "Locked in." }
   } catch (error) {
     return fail(error)
@@ -200,7 +196,6 @@ export async function guessAction(
       answerId: String(formData.get("answerId") ?? ""),
       guessedPlayerId: String(formData.get("guessedPlayerId") ?? ""),
     })
-    revalidatePath(`/room/${code}`)
     return { success: "Vote locked." }
   } catch (error) {
     return fail(error)
@@ -212,7 +207,6 @@ export async function reactionAction(code: string, emoji: string) {
   await assertRateLimit(`react:${user.id}`, 30, 60 * 1000)
   const roomCode = parseRoomCode(code)
   await reactToRound(user.id, roomCode, emoji)
-  revalidatePath(`/room/${roomCode}`)
 }
 
 export async function nextRoundAction(code: string) {
@@ -231,7 +225,6 @@ export async function closeRoomAction(code: string) {
   const user = await requireUser()
   const roomCode = parseRoomCode(code)
   await closeRoom({ actorId: user.id, code: roomCode })
-  revalidatePath(`/room/${roomCode}`)
 }
 
 export async function updateRoomSettingsAction(
@@ -268,7 +261,6 @@ export async function updateRoomSettingsAction(
       cleanFilter: formData.get("cleanFilter") === "on",
       adultConfirmed: formData.get("adultConfirmed") === "on",
     })
-    revalidatePath(`/room/${code}`)
     return { success: "Room setup saved." }
   } catch (error) {
     return fail(error)
@@ -309,7 +301,6 @@ export async function submitPromptAction(
     await assertRateLimit(`prompt:${user.id}`, 20, 15 * 60 * 1000)
     const code = parseRoomCode(String(formData.get("code") ?? ""))
     await submitRoomPrompt(user.id, code, String(formData.get("prompt") ?? ""))
-    revalidatePath(`/room/${code}`)
     return { success: "Question added to this room." }
   } catch (error) {
     return fail(error)
@@ -320,7 +311,6 @@ export async function reviewPromptAction(code: string, promptId: string, decisio
   const user = await requireUser()
   const roomCode = parseRoomCode(code)
   await reviewRoomPrompt({ actorId: user.id, code: roomCode, promptId, decision })
-  revalidatePath(`/room/${roomCode}`)
 }
 
 export async function clientIp() {

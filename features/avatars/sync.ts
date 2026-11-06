@@ -1,5 +1,6 @@
 import "server-only"
 
+import { touchRooms } from "@/features/rooms/touch"
 import { prisma } from "@/lib/db/prisma"
 
 export async function syncActiveSeats(input: { userId: string; name: string; avatar: string }) {
@@ -14,5 +15,9 @@ export async function syncActiveSeats(input: { userId: string; name: string; ava
       avatar: input.avatar,
       ...(displayName.length >= 2 ? { displayName } : {}),
     },
+  })
+  await touchRooms(prisma, {
+    status: { in: ["WAITING", "IN_PROGRESS"] },
+    players: { some: { userId: input.userId, status: { in: ["JOINED", "READY"] } } },
   })
 }

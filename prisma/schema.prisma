@@ -4,7 +4,10 @@ generator client {
 
 datasource db {
   provider = "postgresql"
-  url      = env("DATABASE_URL")
+  // Pooled URL for the running app. Migrations use the direct URL so
+  // advisory locks and long DDL do not go through PgBouncer.
+  url       = env("DATABASE_URL")
+  directUrl = env("DATABASE_URL_UNPOOLED")
 }
 
 enum RoomStatus {
@@ -162,6 +165,9 @@ model Room {
   answerTimer    Int
   guessingTimer  Int
   cleanFilter    Boolean    @default(true)
+  // Bumped by every write that changes what players see. Polls compare it
+  // to skip rebuilding the room when nothing moved.
+  version        Int        @default(0)
   createdAt      DateTime   @default(now())
   updatedAt      DateTime   @updatedAt
   expiresAt      DateTime
@@ -173,6 +179,7 @@ model Room {
   @@index([status])
   @@index([hostId])
   @@index([expiresAt])
+  @@index([status, updatedAt])
 }
 
 model RoomCategory {
@@ -335,4 +342,14 @@ model RateLimitBucket {
   count       Int      @default(0)
 
   @@unique([key, windowStart])
+}
+
+// Better Auth rate limits for /api/auth/* when storage is "database".
+model RateLimit {
+  id          String @id
+  key         String @unique
+  count       Int
+  lastRequest BigInt
+
+  @@index([lastRequest])
 }

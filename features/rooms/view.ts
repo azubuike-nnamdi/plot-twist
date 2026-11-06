@@ -1,5 +1,6 @@
 import { presentAnswer } from "@/features/rooms/present"
 import type { RoundStatus } from "@/features/rooms/transitions"
+import { bluffPointsFor } from "@/features/scoring/score"
 import type { AnswerView, LeaderRow, RoomPhase, RoomView } from "@/types/room"
 
 const titles = [
@@ -38,6 +39,7 @@ type Answer = {
 
 export type ViewInput = {
   now: string
+  version?: number
   code: string
   name: string
   status: RoomView["status"]
@@ -72,6 +74,7 @@ export type ViewInput = {
   }[]
   history: {
     guesserId: string
+    authorId?: string
     isCorrect: boolean | null
     pointsAwarded: number | null
   }[]
@@ -147,6 +150,11 @@ export function buildRoomView(input: ViewInput): RoomView {
         }
         if (presented.author && showAuthors) {
           view.author = presented.author
+          const fooled = answer.guesses.filter(
+            (guess) => guess.pointsAwarded !== null && guess.isCorrect === false
+          ).length
+          view.fooledCount = fooled
+          view.bluffPoints = bluffPointsFor(fooled)
           view.votes = answer.guesses.map((guess) => ({
             displayName:
               playersById.get(guess.guesserId)?.displayName ?? "Player",
@@ -179,6 +187,7 @@ export function buildRoomView(input: ViewInput): RoomView {
       avatar: player.avatar,
       score: player.score,
       correctGuesses: correctGuessesFor(input, player.id),
+      fooled: fooledBy(input, player.id),
       accuracy: accuracyFor(input, player.id),
       title: titleFor(index),
     }))
@@ -232,7 +241,16 @@ export function buildRoomView(input: ViewInput): RoomView {
     })),
     leaderboard,
     serverNow: input.now,
+    version: input.version ?? 0,
   }
+}
+
+/** How many votes this player's answers drew away from them across the match. */
+function fooledBy(input: ViewInput, playerId: string) {
+  return input.history.filter(
+    (guess) =>
+      guess.authorId === playerId && guess.pointsAwarded !== null && guess.isCorrect === false
+  ).length
 }
 
 function correctGuessesFor(input: ViewInput, playerId: string) {

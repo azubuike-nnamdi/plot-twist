@@ -8,6 +8,7 @@ import { getRoomView } from "@/features/rooms/engine"
 import { requirePageUser } from "@/lib/auth/session"
 import { prisma } from "@/lib/db/prisma"
 import { env } from "@/lib/env"
+import { publicRealtimeConfig } from "@/lib/realtime/publish"
 import { AppError } from "@/lib/errors"
 import type { RoomView } from "@/types/room"
 
@@ -44,6 +45,7 @@ export default async function RoomPage({
         <RoomBoard
           initial={view}
           origin={env.NEXT_PUBLIC_APP_URL}
+          realtime={publicRealtimeConfig()}
           packs={categories.map((category) => ({
             id: category.id,
             name: category.name,

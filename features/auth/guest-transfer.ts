@@ -1,5 +1,6 @@
 import "server-only"
 
+import { touchRooms } from "@/features/rooms/touch"
 import { prisma } from "@/lib/db/prisma"
 
 export const CLAIM_GUEST_COOKIE = "pt_claim_guest"
@@ -13,6 +14,9 @@ export async function transferGuestSeat(guestUserId: string, accountUserId: stri
       select: { isAnonymous: true },
     })
     if (!account || account.isAnonymous) return
+    await touchRooms(tx, {
+      OR: [{ hostId: guestUserId }, { players: { some: { userId: guestUserId } } }],
+    })
     await tx.room.updateMany({
       where: { hostId: guestUserId },
       data: { hostId: accountUserId },

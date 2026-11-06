@@ -7,8 +7,11 @@ const globalForPrisma = globalThis as unknown as {
   prismaUrl?: string
 }
 
+// The app always talks to the pooled DATABASE_URL. Serverless instances each
+// hold their own pool, so direct connections would exhaust Postgres quickly.
+// DATABASE_URL_UNPOOLED is only for migrations (see `directUrl` in the schema).
 function databaseUrl() {
-  const url = process.env.DATABASE_URL_UNPOOLED ?? process.env.DATABASE_URL
+  const url = process.env.DATABASE_URL
   if (!url) {
     throw new Error("DATABASE_URL is not set")
   }

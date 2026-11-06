@@ -2,6 +2,7 @@ import "server-only"
 
 import { canAssignRoles, isStaff } from "@/features/auth/permissions"
 import { closeRoom } from "@/features/rooms/engine"
+import { touchRooms } from "@/features/rooms/touch"
 import { writeAudit } from "@/lib/audit"
 import { prisma } from "@/lib/db/prisma"
 import { AppError } from "@/lib/errors"
@@ -317,6 +318,7 @@ export async function removeReportedAnswer(input: {
     where: { id: report.targetId },
     data: { removed: true, answerText: "Removed by a moderator." },
   })
+  await touchRooms(prisma, { rounds: { some: { answers: { some: { id: report.targetId } } } } })
   await prisma.report.update({
     where: { id: report.id },
     data: {

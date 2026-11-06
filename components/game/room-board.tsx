@@ -1,6 +1,6 @@
 "use client"
 
-import { useQuery } from "@tanstack/react-query"
+import { useQuery, useQueryClient } from "@tanstack/react-query"
 import { Check, Copy, Crown, Flame, Home, Lock, Share2 } from "lucide-react"
 import Link from "next/link"
 import { useActionState, useCallback, useEffect, useRef, useState, type ReactNode } from "react"
@@ -26,13 +26,17 @@ import type { PromptPack } from "@/components/forms/create-room-form"
 import { useGuessStore } from "@/components/game/guess-store"
 import { LobbySettings } from "@/components/game/lobby-settings"
 import { PlayerPrompts } from "@/components/game/player-prompts"
+import { useRoomChannel } from "@/components/game/use-room-channel"
+import { roomQueryKey, useRefreshRoom, useRoomAction } from "@/components/game/use-room-refresh"
 import { ANSWER_MAX_LENGTH } from "@/features/answers/rules"
 import { formatClock, nextClockAnchor, remainingMs, type ClockAnchor } from "@/features/rooms/clock"
-import { CORRECT_GUESS_POINTS } from "@/features/scoring/score"
+import { BLUFF_POINTS, CORRECT_GUESS_POINTS } from "@/features/scoring/score"
 import { formatRoomCode } from "@/features/rooms/codes"
 import { showReconnecting } from "@/features/rooms/freshness"
+import { pollIntervalFor } from "@/features/rooms/poll"
 import { REACTIONS } from "@/lib/game/options"
-import type { RoomView } from "@/types/room"
+import type { RealtimeConfig } from "@/lib/realtime/channels"
+import type { RoomPollUnchanged, RoomView } from "@/types/room"
 
 function RoomClock({
   deadlineAt,
@@ -127,30 +131,53 @@ export function RoomBoard({
   initial,
   origin,
   packs,
+  realtime = null,
 }: {
   initial: RoomView
   origin: string
   packs: PromptPack[]
+  realtime?: RealtimeConfig | null
 }) {
+  const queryClient = useQueryClient()
+  const handlePush = useCallback(
+    (version: number) => {
+      const known = queryClient.getQueryData<RoomView>(roomQueryKey(initial.code))
+      if (known && known.version >= version) return
+      void queryClient.invalidateQueries({ queryKey: roomQueryKey(initial.code) })
+    },
+    [queryClient, initial.code]
+  )
+  const pushConnected = useRoomChannel(initial.code, realtime, handlePush)
   const query = useQuery({
-    queryKey: ["room", initial.code],
-    queryFn: async () => {
-      const response = await fetch(`/api/rooms/${initial.code}/state`, {
+    queryKey: roomQueryKey(initial.code),
+    queryFn: async ({ signal }) => {
+      const known = queryClient.getQueryData<RoomView>(roomQueryKey(initial.code))
+      const since = known ? `?v=${known.version}` : ""
+      const response = await fetch(`/api/rooms/${initial.code}/state${since}`, {
         cache: "no-store",
+        signal,
       })
       if (!response.ok) throw new Error("The room could not be refreshed.")
-      return (await response.json()) as RoomView
+      const payload = (await response.json()) as RoomView | RoomPollUnchanged
+      if ("unchanged" in payload) {
+        // Nothing moved on the server. Keep the current view and only resync the clock.
+        if (known) return { ...known, serverNow: payload.serverNow }
+        throw new Error("The room could not be refreshed.")
+      }
+      return payload
     },
     initialData: initial,
-    refetchInterval: (query) => {
-      const phase = query.state.data?.phase
-      if (phase === "ANSWERING" || phase === "GUESSING") return 1000
-      return 4000
-    },
+    refetchInterval: (query) => pollIntervalFor(query.state.data?.phase, pushConnected),
     refetchIntervalInBackground: false,
+    retry: 1,
+    retryDelay: 500,
   })
   const view = query.data
   const refetchRoom = query.refetch
+  // Catch up on anything missed while the socket was down.
+  useEffect(() => {
+    if (pushConnected) void refetchRoom()
+  }, [pushConnected, refetchRoom])
   const handleClockElapsed = useCallback(() => {
     void refetchRoom()
   }, [refetchRoom])
@@ -212,6 +239,7 @@ function Lobby({
   packs: PromptPack[]
 }) {
   const [notice, setNotice] = useState<{ text: string; id: number } | null>(null)
+  const act = useRoomAction(view.code)
   const joined = view.players.length
   const seatsLeft = Math.max(0, view.maxPlayers - joined)
   const readyCount = view.players.filter((player) => player.ready).length
@@ -353,7 +381,7 @@ function Lobby({
             </p>
           ) : null}
           <form
-            action={readyAction.bind(null, view.code, !you?.ready)}
+            action={act(readyAction, view.code, !you?.ready)}
             className="mt-4"
           >
             <button
@@ -409,7 +437,7 @@ function Lobby({
               </span>
             )}
             {view.youAreHost && !player.isYou ? (
-              <form action={removePlayerAction.bind(null, view.code, player.id)}>
+              <form action={act(removePlayerAction, view.code, player.id)}>
                 <button className="min-h-11 px-1 text-xs text-red-300">Remove</button>
               </form>
             ) : null}
@@ -445,7 +473,7 @@ function Lobby({
             </button>
           </form>
           {view.youAreHost ? (
-            <form action={startGameAction.bind(null, view.code)}>
+            <form action={act(startGameAction, view.code)}>
               <button className="h-11 w-full rounded-xl bg-[#9b7bff] px-5 font-semibold text-[#100d1d] sm:w-auto">
                 Start game
               </button>
@@ -474,6 +502,7 @@ function Answering({
   clock: ReactNode
   onSaved: () => void
 }) {
+  const act = useRoomAction(view.code)
   return (
     <div className="grid gap-4">
       <section className="overflow-hidden rounded-[24px] border border-[#302d41] bg-[#161222]">
@@ -496,7 +525,7 @@ function Answering({
             <p className="mt-2 text-xs font-semibold text-[#ffd166]">Replay · this group has heard this prompt</p>
           ) : null}
           <div className="mt-4 flex flex-wrap items-center justify-between gap-2 text-sm">
-            <span className="text-[#9c98ad]">Anonymous voting next</span>
+            <span className="text-[#9c98ad]">Disguise your style. Every wrong vote on your answer is +{BLUFF_POINTS} pts</span>
             <span className="font-semibold text-[#ffd166]">+{CORRECT_GUESS_POINTS} pts per correct guess</span>
           </div>
           <div className="mt-3 flex justify-end">{clock}</div>
@@ -519,10 +548,10 @@ function Answering({
       </p>
       {view.youAreHost ? (
         <div className="flex flex-wrap justify-center gap-2">
-          <form action={skipQuestionAction.bind(null, view.code)}>
+          <form action={act(skipQuestionAction, view.code)}>
             <button className="h-10 rounded-lg border border-border px-3 text-sm">Skip question</button>
           </form>
-          <form action={endGameAction.bind(null, view.code)}>
+          <form action={act(endGameAction, view.code)}>
             <button className="h-10 rounded-lg px-3 text-sm">End game</button>
           </form>
         </div>
@@ -621,6 +650,7 @@ function Guessing({ view, clock }: { view: RoomView; clock: ReactNode }) {
 }
 
 function Reveal({ view }: { view: RoomView }) {
+  const act = useRoomAction(view.code)
   return (
     <div className="grid gap-4">
       {view.answers.map((answer) => {
@@ -649,6 +679,11 @@ function Reveal({ view }: { view: RoomView }) {
               <p className="mt-1 text-sm text-[#9c98ad]">
                 Wrote this. Fooled {missed.length} out of {votes.length} {votes.length === 1 ? "player" : "players"}.
               </p>
+              {(answer.bluffPoints ?? 0) > 0 ? (
+                <p className="mt-2 inline-flex rounded-full bg-[#ff6b8a]/15 px-3 py-1 text-sm font-semibold text-[#ff8fab]">
+                  {answer.author?.playerId === view.yourPlayerId ? "Your bluff paid off" : "Bluff bonus"} +{answer.bluffPoints} pts
+                </p>
+              ) : null}
             </section>
             {yours ? (
               <p className="rounded-2xl bg-[#ffd166]/10 px-4 py-3 text-sm text-[#ffd166]">
@@ -668,7 +703,7 @@ function Reveal({ view }: { view: RoomView }) {
       })}
       <div className="flex flex-wrap gap-2">
         {REACTIONS.map((emoji) => (
-          <form key={emoji} action={reactionAction.bind(null, view.code, emoji)}>
+          <form key={emoji} action={act(reactionAction, view.code, emoji)}>
             <button className="min-h-11 rounded-lg border border-border px-3" type="submit">
               {emoji} {view.reactions.find((item) => item.emoji === emoji)?.count ?? 0}
             </button>
@@ -676,7 +711,7 @@ function Reveal({ view }: { view: RoomView }) {
         ))}
       </div>
       {view.youAreHost ? (
-        <form action={nextRoundAction.bind(null, view.code)}>
+        <form action={act(nextRoundAction, view.code)}>
           <button className="h-12 w-full rounded-2xl bg-[#9b7bff] px-4 font-semibold text-white">
             {view.currentRound >= view.totalRounds
               ? "Show final results"
@@ -691,6 +726,7 @@ function Reveal({ view }: { view: RoomView }) {
 }
 
 function Results({ view }: { view: RoomView }) {
+  const act = useRoomAction(view.code)
   const [copied, setCopied] = useState(false)
   const board = view.leaderboard
   async function handleShare() {
@@ -746,7 +782,7 @@ function Results({ view }: { view: RoomView }) {
                 {row.playerId === view.yourPlayerId ? " (You)" : ""}
               </span>
               <span className="block text-xs text-[#9c98ad]">
-                {row.accuracy}% accuracy · {row.correctGuesses} correct
+                {row.accuracy}% accuracy · {row.correctGuesses} correct · fooled {row.fooled}
               </span>
             </span>
             <span className="font-semibold">{row.score} pts</span>
@@ -787,7 +823,7 @@ function Results({ view }: { view: RoomView }) {
           </Link>
         </div>
         {view.youAreHost && view.status === "COMPLETED" ? (
-          <form action={closeRoomAction.bind(null, view.code)}>
+          <form action={act(closeRoomAction, view.code)}>
             <button className="h-11 w-full rounded-2xl border border-border text-sm">Close room</button>
           </form>
         ) : null}
@@ -869,6 +905,10 @@ function GuessForm({
   locked: boolean
 }) {
   const [state, action, pending] = useActionState(guessAction, null)
+  const refresh = useRefreshRoom(code)
+  useEffect(() => {
+    if (state?.success) void refresh()
+  }, [state, refresh])
   const label = locked ? "Vote locked" : suspectName ? `Lock in vote for ${suspectName}` : "Lock in vote"
   return (
     <form action={action} className="mt-4 grid gap-2">
@@ -967,6 +1007,7 @@ function SeatRow({ view, title, detail }: { view: RoomView; title: string; detai
 }
 
 function ManagePlayers({ view }: { view: RoomView }) {
+  const act = useRoomAction(view.code)
   return (
     <aside className="rounded-[20px] border border-[#302d41] bg-[#1b1730] p-4">
       <h2 className="font-semibold">Manage players</h2>
@@ -996,7 +1037,7 @@ function ManagePlayers({ view }: { view: RoomView }) {
             </span>
             <span className="shrink-0 font-mono">{player.score}</span>
             {view.youAreHost && !player.isYou ? (
-              <form action={removePlayerAction.bind(null, view.code, player.id)}>
+              <form action={act(removePlayerAction, view.code, player.id)}>
                 <button className="min-h-11 px-2 text-xs text-red-300">Remove</button>
               </form>
             ) : null}
