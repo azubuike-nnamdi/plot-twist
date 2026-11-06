@@ -117,7 +117,7 @@ export async function joinRoomAction(
     const current = await getCurrentUser()
     let userId = current?.id ?? ""
     if (!current) {
-      await assertRateLimit(`join-guest:${await requestIp()}`, 10, 15 * 60 * 1000)
+      await assertRateLimit(`join-guest:${await requestIp()}`, 40, 15 * 60 * 1000)
       const created = await auth.api.signInAnonymous({ headers: await headers() })
       userId = created.user.id
     } else {
