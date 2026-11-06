@@ -6,6 +6,7 @@ import { redirect } from "next/navigation"
 import { isStaff } from "@/features/auth/permissions"
 import { auth } from "@/lib/auth/auth"
 import { prisma } from "@/lib/db/prisma"
+import { clientIpFrom } from "@/lib/security/client-ip"
 import { AppError } from "@/lib/errors"
 
 export type CurrentUser = {
@@ -71,10 +72,7 @@ export async function requireStaffPage() {
 }
 
 export async function requestIp() {
-  const headerStore = await headers()
-  const forwarded = headerStore.get("x-forwarded-for")
-  if (forwarded) return forwarded.split(",")[0]?.trim() || "unknown"
-  return headerStore.get("x-real-ip") ?? "unknown"
+  return clientIpFrom(await headers())
 }
 
 export async function revokeUserSessions(userId: string) {
