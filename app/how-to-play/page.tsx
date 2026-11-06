@@ -9,7 +9,7 @@ const steps = [
   ["Lobby", "Create a room, pick packs, and share TWST-XXXXXXXX. At least 3 accounts are needed to start."],
   ["Answers", "Each player submits one answer. Nobody sees who wrote it."],
   ["Guesses", "Vote for the author of each other answer. You cannot vote for yourself."],
-  ["Reveal", "Authors are shown, correct guesses earn 100 points, and the host starts the next round."],
+  ["Reveal", "Authors are shown. Correct guesses earn 100 points, each wrong vote earns the author 50, and the host starts the next round."],
 ]
 
 export default function HowToPlayPage() {
@@ -19,7 +19,7 @@ export default function HowToPlayPage() {
       <main className="mx-auto max-w-3xl px-4 py-10">
         <h1 className="font-display text-4xl font-bold">How to play</h1>
         <p className="mt-3 text-muted-foreground">
-          Write. Shuffle. Guess. Crown. A correct guess is 100 points. The author does not score for their own answer.
+          Write. Shuffle. Guess. Crown. A correct guess is 100 points. Every player who guesses wrong on your answer earns you 50 bluff points.
         </p>
         <ol className="mt-8 grid gap-4">
           {steps.map(([title, body], index) => (
