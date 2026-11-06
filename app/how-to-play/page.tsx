@@ -6,7 +6,7 @@ import { SiteHeader } from "@/components/layout/site-header"
 export const metadata: Metadata = { title: "How to Play" }
 
 const steps = [
-  ["Lobby", "Create a room, pick packs, and share TWST-XXXXXXXX. At least 3 accounts are needed to start."],
+  ["Lobby", "Create a room, pick packs, and share TWST-XXXXXXXX. At least 2 players are needed to start. Only the host needs an account."],
   ["Answers", "Each player submits one answer. Nobody sees who wrote it."],
   ["Guesses", "Vote for the author of each other answer. You cannot vote for yourself."],
   ["Reveal", "Authors are shown. Correct guesses earn 100 points, each wrong vote earns the author 50, and the host starts the next round."],
