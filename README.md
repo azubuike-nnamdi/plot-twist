@@ -2,7 +2,7 @@
 
 PlotTwist is a social party game for private rooms. Friends write anonymous answers to the same prompt, guess who wrote each one, and score points when the authors are revealed.
 
-A correct guess is worth 100 points. A wrong guess, a missed guess, and the author of an answer score 0. There is no speed bonus and no streak bonus.
+A correct guess is worth 100 points to the guesser. Each wrong vote on an answer is worth 50 bluff points to its author, so it pays to disguise your style. A missed guess scores nobody. There is no speed bonus and no streak bonus.
 
 ## How a match works
 
@@ -27,6 +27,10 @@ A pack question is used once inside a match. Play again does not copy the lobby 
 
 Staff manage the bank at `/admin/questions`. Add a question, choose its pack, mark it 18+ when it belongs in the adult pack, or deactivate it so rooms stop drawing it. `pnpm db:seed` loads the starting packs and skips a question whose text is already in that pack. Ollama can draft a batch on that page when `ollama` is running locally. Drafts stay inactive until you publish them, and a round does not wait on a newly generated question.
 
+## Live updates
+
+Rooms update in real time through [Pusher Channels](https://pusher.com/channels) when `PUSHER_APP_ID`, `PUSHER_KEY`, `PUSHER_SECRET`, and `PUSHER_CLUSTER` are set. After each change the server sends only a version number on a private room channel, and each browser refetches its own view. Without those keys, or while a socket is down, rooms poll every second instead, so push is optional.
+
 ## Stack
 
 Next.js, React, TypeScript, Tailwind CSS, Prisma, Neon Postgres, and Better Auth. The app is a single Next.js project. Game rules run on the server.
@@ -39,6 +43,8 @@ Install dependencies, then copy the environment template and fill in the values 
 pnpm install
 cp .env.example .env
 ```
+
+`DATABASE_URL` is the pooled connection the app uses. `DATABASE_URL_UNPOOLED` is the direct connection Prisma uses for migrations. If you have no pooler, set both to the same URL.
 
 Apply the schema, load the prompt packs and platform settings, then start the app:
 
