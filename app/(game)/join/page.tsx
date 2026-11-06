@@ -51,7 +51,7 @@ export default async function JoinPage({
             />
           </div>
         </section>
-        <aside className="rounded-[20px] border border-border bg-card p-6">
+        <aside className="self-start rounded-[20px] border border-border bg-card p-6">
           <h2 className="text-lg font-semibold">Room check</h2>
           {preview ? (
             <div className="mt-3 text-sm">
