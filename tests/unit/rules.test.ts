@@ -12,7 +12,14 @@ import {
   phaseNeedsAdvance,
 } from "@/features/rooms/transitions"
 import { buildRoomView, type ViewInput } from "@/features/rooms/view"
-import { guessesToScore, pointsForGuess } from "@/features/scoring/score"
+import {
+  BLUFF_POINTS,
+  bluffPointsFor,
+  CORRECT_GUESS_POINTS,
+  guessesToScore,
+  pointsForGuess,
+  tallyRound,
+} from "@/features/scoring/score"
 import { readServerEnv } from "@/lib/env-schema"
 import {
   ANSWER_TIMERS,
@@ -363,5 +370,36 @@ describe("codes and config", () => {
   it("names the missing configuration", () => {
     expect(() => readServerEnv({})).toThrow(/Missing or invalid configuration/)
     expect(readServerEnv(env).MAILTRAP_FROM_EMAIL).toBe("play@example.com")
+  })
+})
+
+describe("bluff scoring", () => {
+  it("pays the guesser for a correct vote and the author for a wrong one", () => {
+    const tally = tallyRound([
+      { id: "g1", guesserId: "bea", authorId: "ana", guessedPlayerId: "ana", pointsAwarded: null },
+      { id: "g2", guesserId: "cal", authorId: "ana", guessedPlayerId: "bea", pointsAwarded: null },
+      { id: "g3", guesserId: "dee", authorId: "ana", guessedPlayerId: "cal", pointsAwarded: null },
+    ])
+    expect(tally.correctIds).toEqual(["g1"])
+    expect(tally.wrongIds).toEqual(["g2", "g3"])
+    expect(new Map(tally.playerPoints.map((row) => [row.playerId, row.points]))).toEqual(
+      new Map([
+        ["bea", CORRECT_GUESS_POINTS],
+        ["ana", 2 * BLUFF_POINTS],
+      ])
+    )
+  })
+
+  it("never pays twice for votes already scored", () => {
+    const tally = tallyRound([
+      { id: "g1", guesserId: "bea", authorId: "ana", guessedPlayerId: "cal", pointsAwarded: 0 },
+    ])
+    expect(tally.wrongIds).toEqual([])
+    expect(tally.playerPoints).toEqual([])
+  })
+
+  it("prices bluffs at 50 a fooled player", () => {
+    expect(bluffPointsFor(3)).toBe(150)
+    expect(bluffPointsFor(-1)).toBe(0)
   })
 })
