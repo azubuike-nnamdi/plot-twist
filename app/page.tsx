@@ -57,8 +57,8 @@ const features = [
   },
   {
     icon: Users,
-    title: "3 to 16 players",
-    body: "Start once at least three players are in the room. Capacity can go up to 16.",
+    title: "2 to 16 players",
+    body: "Start once at least two players are in the room. Capacity can go up to 16.",
     tone: "bg-[#ffd166]/15 text-[#ffd166]",
   },
 ]
@@ -204,7 +204,7 @@ export default function HomePage() {
               </h2>
               <p className="mx-auto mt-4 max-w-xl text-muted-foreground">
                 Free in the browser. Create an account, send the room code, and start
-                once three players are in.
+                once two players are in.
               </p>
               <div className="mt-8 grid gap-3 sm:flex sm:flex-wrap sm:items-center sm:justify-center">
                 <Link
