@@ -5,6 +5,9 @@ import { NextResponse } from "next/server"
 import { cleanupExpiredRows } from "@/features/maintenance/cleanup"
 import { env } from "@/lib/env"
 
+// Purging old rooms runs in batches and can take longer than a normal request.
+export const maxDuration = 60
+
 function matches(left: string, right: string) {
   const a = Buffer.from(left)
   const b = Buffer.from(right)
