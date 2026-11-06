@@ -21,7 +21,7 @@ Keep secrets out of git. `.env` is ignored. Integration tests need their own dat
 ## What to change
 
 - Match the existing Next.js App Router layout, server actions, and Prisma models.
-- Keep game rules on the server. A correct guess is 100 points. Wrong guesses, missed guesses, and the answer's author score 0.
+- Keep game rules on the server. A correct guess is 100 points to the guesser. A wrong vote is 50 bluff points to the answer's author. A missed guess scores nobody.
 - Room codes stay in the form `TWST-XXXXXXXX`.
 - An account is required to host, not to play. Guests join with a name and cannot be promoted to host.
 
