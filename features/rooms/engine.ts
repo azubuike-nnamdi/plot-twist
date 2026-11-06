@@ -14,32 +14,51 @@ import {
   canTransitionRound,
   chooseNextHost,
   phaseNeedsAdvance,
-  type RoundStatus,
 } from "@/features/rooms/transitions"
 import { buildRoomView, type ViewInput } from "@/features/rooms/view"
-import { guessesToScore } from "@/features/scoring/score"
+import { CORRECT_GUESS_POINTS, tallyRound } from "@/features/scoring/score"
 import { writeAudit } from "@/lib/audit"
 import { prisma } from "@/lib/db/prisma"
+import { publishRoomChanges } from "@/lib/realtime/publish"
 import { env } from "@/lib/env"
 import { sendReportNotice } from "@/lib/mail/messages"
 import { AppError } from "@/lib/errors"
 import { isAvatar, isUploadAvatar, uploadOwnerId } from "@/lib/avatars"
 import { guessTimerFor, REACTIONS } from "@/lib/game/options"
-import type { RoomPreview, RoomView } from "@/types/room"
+import { canReuseView, presenceIsStale } from "@/features/rooms/poll"
+import type { RoomPollUnchanged, RoomPreview, RoomView } from "@/types/room"
 
 type Tx = Prisma.TransactionClient
 type PrismaClient = Prisma.DefaultPrismaClient
 
 const roomTransaction = { timeout: 15_000, maxWait: 10_000 } as const
 
-function runRoomTransaction<T>(fn: (tx: Tx) => Promise<T>) {
-  return prisma.$transaction(fn, roomTransaction)
+// Rooms each transaction locked, with their newest version. Published only
+// after commit, so nobody is told about a write that rolled back.
+const lockedInTransaction = new WeakMap<Tx, Map<string, number>>()
+
+async function runRoomTransaction<T>(fn: (tx: Tx) => Promise<T>) {
+  let changed: Map<string, number> | undefined
+  const result = await prisma.$transaction(async (tx) => {
+    const value = await fn(tx)
+    changed = lockedInTransaction.get(tx)
+    return value
+  }, roomTransaction)
+  if (changed) {
+    publishRoomChanges([...changed].map(([code, version]) => ({ code, version })))
+  }
+  return result
 }
 
 const roomInclude = Prisma.validator<Prisma.RoomInclude>()({
   players: { include: { user: { select: { isAnonymous: true } } } },
   categories: { include: { category: true } },
+  // Only the current round. Hot actions (answers, votes) run under the room
+  // lock, so they must not drag every past round through it. Code that needs
+  // older rounds queries them directly (usedPackQuestionIds, roomHistory).
   rounds: {
+    orderBy: { roundNumber: "desc" },
+    take: 1,
     include: {
       answers: { include: { guesses: true } },
       question: { include: { category: true } },
@@ -63,7 +82,7 @@ function activePlayers(room: LoadedRoom) {
 }
 
 function latestRound(room: LoadedRoom) {
-  return [...room.rounds].sort((left, right) => right.roundNumber - left.roundNumber)[0] ?? null
+  return room.rounds[0] ?? null
 }
 
 function hostCandidates(
@@ -103,11 +122,21 @@ async function applyHostSeat(tx: Tx, room: LoadedRoom, now: Date) {
   return loadRoom(tx, room.id)
 }
 
+// Takes the room row lock and bumps the version in one statement. Every write
+// to room state goes through here, so a poll can tell whether anything changed.
+// If the transaction rolls back, the bump rolls back with it.
 async function lockRoom(tx: Tx, roomId: string) {
-  const rows = await tx.$queryRaw<Array<{ id: string }>>`
-    SELECT "id" FROM "Room" WHERE "id" = ${roomId} FOR UPDATE
+  const rows = await tx.$queryRaw<Array<{ roomCode: string; version: number }>>`
+    UPDATE "Room"
+    SET "version" = "version" + 1, "updatedAt" = NOW()
+    WHERE "id" = ${roomId}
+    RETURNING "roomCode", "version"
   `
-  if (rows.length !== 1) throw new AppError("Room not found.", "NOT_FOUND")
+  const row = rows[0]
+  if (rows.length !== 1 || !row) throw new AppError("Room not found.", "NOT_FOUND")
+  const locked = lockedInTransaction.get(tx) ?? new Map<string, number>()
+  locked.set(row.roomCode, Number(row.version))
+  lockedInTransaction.set(tx, locked)
 }
 
 async function loadRoom(db: Tx | PrismaClient, roomId: string): Promise<LoadedRoom> {
@@ -142,9 +171,28 @@ async function settings(db: Tx | PrismaClient) {
   })
 }
 
-function usedPackQuestionIds(room: LoadedRoom) {
-  return room.rounds.flatMap((round) => (round.questionId ? [round.questionId] : []))
+async function usedPackQuestionIds(tx: Tx, roomId: string) {
+  const rounds = await tx.round.findMany({
+    where: { roomId, questionId: { not: null } },
+    select: { questionId: true },
+  })
+  return rounds.flatMap((round) => (round.questionId ? [round.questionId] : []))
 }
+
+/** Every vote in the match, for leaderboard stats. Small rows, no answer text. */
+function roomHistory(db: Tx | PrismaClient, roomId: string) {
+  return db.guess.findMany({
+    where: { answer: { round: { roomId } } },
+    select: {
+      guesserId: true,
+      isCorrect: true,
+      pointsAwarded: true,
+      answer: { select: { playerId: true } },
+    },
+  })
+}
+
+type RoomHistory = Awaited<ReturnType<typeof roomHistory>>
 
 async function drawPrompt(tx: Tx, room: LoadedRoom, exclude: string[]) {
   const playerPrompts = await tx.roomPrompt.findMany({
@@ -201,125 +249,120 @@ async function drawPrompt(tx: Tx, room: LoadedRoom, exclude: string[]) {
 }
 
 async function scoreRound(tx: Tx, round: LoadedRoom["rounds"][number]) {
-  const pending = round.answers.flatMap((answer) =>
-    answer.guesses.map((guess) => ({
-      id: guess.id,
-      guesserId: guess.guesserId,
-      isCorrect: guess.guessedPlayerId === answer.playerId,
-      pointsAwarded: guess.pointsAwarded,
-    }))
+  const tally = tallyRound(
+    round.answers.flatMap((answer) =>
+      answer.guesses.map((guess) => ({
+        id: guess.id,
+        guesserId: guess.guesserId,
+        authorId: answer.playerId,
+        guessedPlayerId: guess.guessedPlayerId,
+        pointsAwarded: guess.pointsAwarded,
+      }))
+    )
   )
-  const updates = guessesToScore(pending)
-  for (const update of updates) {
-    const source = pending.find((guess) => guess.id === update.id)
-    if (!source) continue
-    await tx.guess.update({
-      where: { id: update.id },
-      data: {
-        isCorrect: update.isCorrect,
-        pointsAwarded: update.pointsAwarded,
-      },
+  if (tally.correctIds.length > 0) {
+    await tx.guess.updateMany({
+      where: { id: { in: tally.correctIds } },
+      data: { isCorrect: true, pointsAwarded: CORRECT_GUESS_POINTS },
     })
-    if (update.pointsAwarded > 0) {
-      await tx.roomPlayer.update({
-        where: { id: source.guesserId },
-        data: { score: { increment: update.pointsAwarded } },
-      })
-    }
+  }
+  if (tally.wrongIds.length > 0) {
+    await tx.guess.updateMany({
+      where: { id: { in: tally.wrongIds } },
+      data: { isCorrect: false, pointsAwarded: 0 },
+    })
+  }
+  for (const award of tally.playerPoints) {
+    await tx.roomPlayer.update({
+      where: { id: award.playerId },
+      data: { score: { increment: award.points } },
+    })
   }
 }
 
+// Moves the current round forward when its timer ran out or everyone acted.
+// It reloads the room only after it writes, so a no-op costs one load.
 async function advanceLocked(tx: Tx, roomId: string, now: Date) {
   await lockRoom(tx, roomId)
-  let room = await applyHostSeat(tx, await loadRoom(tx, roomId), now)
+  const room = await applyHostSeat(tx, await loadRoom(tx, roomId), now)
   if (room.status !== "IN_PROGRESS") return room
   const round = latestRound(room)
   if (!round) return room
   const active = activePlayers(room)
   const deadline = round.phaseDeadlineAt?.getTime() ?? null
   const timedOut = deadline !== null && now.getTime() >= deadline
-  let openedGuessing = false
   if (round.status === "ANSWERING") {
     const everyoneAnswered =
       active.length > 0 &&
       active.every((player) =>
         round.answers.some((answer) => answer.playerId === player.id)
       )
-    if (timedOut || everyoneAnswered) {
-      if (!canTransitionRound("ANSWERING", "GUESSING")) {
-        throw new AppError("That round cannot move to guessing.", "CONFLICT")
-      }
-      for (const answer of round.answers) {
-        await tx.answer.update({
-          where: { id: answer.id },
-          data: { sortKey: randomInt(1, 1_000_000) },
-        })
-      }
-      const nextStatus: RoundStatus =
-        round.answers.length === 0 ? "REVEAL" : "GUESSING"
-      if (nextStatus === "REVEAL" && !canTransitionRound("GUESSING", "REVEAL")) {
-        throw new AppError("That round cannot be revealed.", "CONFLICT")
-      }
+    if (!timedOut && !everyoneAnswered) return room
+    if (!canTransitionRound("ANSWERING", "GUESSING")) {
+      throw new AppError("That round cannot move to guessing.", "CONFLICT")
+    }
+    if (round.answers.length === 0) {
       await tx.round.update({
         where: { id: round.id },
-        data: {
-          status: "GUESSING",
-          phaseDeadlineAt: new Date(now.getTime() + room.guessingTimer * 1000),
-        },
+        data: { status: "REVEAL", phaseDeadlineAt: null },
       })
-      if (round.answers.length === 0) {
-        await tx.round.update({
-          where: { id: round.id },
-          data: { status: "REVEAL", phaseDeadlineAt: null },
-        })
-      } else {
-        openedGuessing = true
-      }
+      return loadRoom(tx, roomId)
     }
+    // Shuffle in one statement instead of one update per answer.
+    await tx.$executeRaw`
+      UPDATE "Answer"
+      SET "sortKey" = 1 + floor(random() * 999999)::int
+      WHERE "roundId" = ${round.id}
+    `
+    await tx.round.update({
+      where: { id: round.id },
+      data: {
+        status: "GUESSING",
+        phaseDeadlineAt: new Date(now.getTime() + room.guessingTimer * 1000),
+      },
+    })
+    return loadRoom(tx, roomId)
   }
-  room = await loadRoom(tx, roomId)
-  const guessing = latestRound(room)
-  if (room.status === "IN_PROGRESS" && guessing?.status === "GUESSING" && !openedGuessing) {
-    const guessers = activePlayers(room)
-    const answers = guessing.answers
+  if (round.status === "GUESSING") {
     const finished =
-      answers.length === 0 ||
-      guessers.every((player) =>
-        answers
+      round.answers.length === 0 ||
+      active.every((player) =>
+        round.answers
           .filter((answer) => answer.playerId !== player.id)
           .every((answer) =>
             answer.guesses.some((guess) => guess.guesserId === player.id)
           )
       )
-    const guessDeadline = guessing.phaseDeadlineAt?.getTime() ?? null
-    const guessTimedOut = guessDeadline !== null && now.getTime() >= guessDeadline
-    if (finished || guessTimedOut) {
-      if (!canTransitionRound("GUESSING", "REVEAL")) {
-        throw new AppError("That round cannot be revealed.", "CONFLICT")
-      }
-      await scoreRound(tx, guessing)
-      await tx.round.update({
-        where: { id: guessing.id },
-        data: { status: "REVEAL", phaseDeadlineAt: null },
-      })
+    if (!finished && !timedOut) return room
+    if (!canTransitionRound("GUESSING", "REVEAL")) {
+      throw new AppError("That round cannot be revealed.", "CONFLICT")
     }
+    await scoreRound(tx, round)
+    await tx.round.update({
+      where: { id: round.id },
+      data: { status: "REVEAL", phaseDeadlineAt: null },
+    })
+    return loadRoom(tx, roomId)
   }
-  return loadRoom(tx, roomId)
+  return room
 }
 
 export async function advanceRoom(roomId: string, now = new Date()) {
-  await runRoomTransaction((tx) => advanceLocked(tx, roomId, now))
+  return runRoomTransaction((tx) => advanceLocked(tx, roomId, now))
 }
 
 function toView(
   room: LoadedRoom,
+  history: RoomHistory,
   viewerUserId: string,
-  now: Date,
-  viewerIsGuest: boolean
+  now: Date
 ): RoomView {
   const round = latestRound(room)
+  const viewerIsGuest =
+    room.players.find((player) => player.userId === viewerUserId)?.user.isAnonymous === true
   const input: ViewInput = {
     now: now.toISOString(),
+    version: room.version,
     code: room.roomCode,
     name: room.name,
     status: room.status,
@@ -377,15 +420,12 @@ function toView(
         })),
       }
       : null,
-    history: room.rounds.flatMap((item) =>
-      item.answers.flatMap((answer) =>
-        answer.guesses.map((guess) => ({
-          guesserId: guess.guesserId,
-          isCorrect: guess.isCorrect,
-          pointsAwarded: guess.pointsAwarded,
-        }))
-      )
-    ),
+    history: history.map((guess) => ({
+      guesserId: guess.guesserId,
+      authorId: guess.answer.playerId,
+      isCorrect: guess.isCorrect,
+      pointsAwarded: guess.pointsAwarded,
+    })),
   }
   return buildRoomView(input)
 }
@@ -399,19 +439,13 @@ async function roomIdForCode(code: string) {
   return room.id
 }
 
-export async function getRoomView(code: string, userId: string) {
-  const roomId = await roomIdForCode(code)
-  const membership = await prisma.roomPlayer.findUnique({
-    where: { roomId_userId: { roomId, userId } },
-  })
-  if (!membership || membership.status === "REMOVED" || membership.status === "LEFT") {
+function assertSeated(player: { status: string } | undefined) {
+  if (!player || player.status === "REMOVED" || player.status === "LEFT") {
     throw new AppError("Join this room before opening it.", "FORBIDDEN")
   }
-  const now = new Date()
-  await prisma.roomPlayer.update({
-    where: { id: membership.id },
-    data: { lastSeenAt: now },
-  })
+}
+
+async function buildFreshView(roomId: string, userId: string, now: Date) {
   let room = await loadRoom(prisma, roomId)
   const round = latestRound(room)
   const nextHost = chooseNextHost(hostCandidates(room), room.hostId, now.getTime())
@@ -428,15 +462,90 @@ export async function getRoomView(code: string, userId: string) {
         guesses: answer.guesses.map((guess) => ({ guesserId: guess.guesserId })),
       })),
     })
-  if (needsAdvance) {
-    await advanceRoom(roomId, now)
-    room = await loadRoom(prisma, roomId)
-  }
-  const viewer = await prisma.user.findUnique({
-    where: { id: userId },
-    select: { isAnonymous: true },
+  if (needsAdvance) room = await advanceRoom(roomId, now)
+  return toView(room, await roomHistory(prisma, roomId), userId, now)
+}
+
+/** Full room view. Used for the first page render. */
+export async function getRoomView(code: string, userId: string) {
+  const result = await pollRoom(code, userId, null)
+  if ("unchanged" in result) throw new AppError("Room view missing.", "CONFLICT")
+  return result
+}
+
+/**
+ * The hot path behind the room poll. It reads a small snapshot (version, latest
+ * round deadline, seats) and returns `unchanged` when the client's copy at
+ * `knownVersion` is still current. It only loads the whole room when something
+ * changed or a timer or host hand-off needs the room to advance.
+ */
+export async function pollRoom(
+  code: string,
+  userId: string,
+  knownVersion: number | null
+): Promise<RoomView | RoomPollUnchanged> {
+  const now = new Date()
+  const snapshot = await prisma.room.findUnique({
+    where: { roomCode: code },
+    select: {
+      id: true,
+      version: true,
+      status: true,
+      hostId: true,
+      players: {
+        select: {
+          id: true,
+          userId: true,
+          status: true,
+          joinedAt: true,
+          lastSeenAt: true,
+          user: { select: { isAnonymous: true } },
+        },
+      },
+      rounds: {
+        orderBy: { roundNumber: "desc" },
+        take: 1,
+        select: { status: true, phaseDeadlineAt: true },
+      },
+    },
   })
-  return toView(room, userId, now, viewer?.isAnonymous === true)
+  if (!snapshot) throw new AppError("We couldn't find that room.", "NOT_FOUND")
+  const membership = snapshot.players.find((player) => player.userId === userId)
+  assertSeated(membership)
+  if (membership && presenceIsStale(membership.lastSeenAt.getTime(), now.getTime())) {
+    // Presence is a heartbeat, not room state, so it does not bump the version.
+    await prisma.roomPlayer.update({
+      where: { id: membership.id },
+      data: { lastSeenAt: now },
+    })
+    membership.lastSeenAt = now
+  }
+  const nextHost = chooseNextHost(
+    snapshot.players.map((player) => ({
+      userId: player.userId,
+      joinedAt: player.joinedAt.getTime(),
+      lastSeenAt: player.lastSeenAt.getTime(),
+      status: player.status,
+      canHost: !player.user.isAnonymous,
+    })),
+    snapshot.hostId,
+    now.getTime()
+  )
+  const round = snapshot.rounds[0] ?? null
+  if (
+    canReuseView({
+      knownVersion,
+      version: snapshot.version,
+      status: snapshot.status,
+      roundStatus: round?.status ?? null,
+      deadlineAt: round?.phaseDeadlineAt?.getTime() ?? null,
+      now: now.getTime(),
+      hostChanges: nextHost !== snapshot.hostId,
+    })
+  ) {
+    return { unchanged: true, version: snapshot.version, serverNow: now.toISOString() }
+  }
+  return buildFreshView(snapshot.id, userId, now)
 }
 
 export async function previewRoom(code: string): Promise<RoomPreview> {
@@ -813,7 +922,7 @@ export async function nextRound(hostId: string, code: string) {
       })
       return
     }
-    const drawn = await drawPrompt(tx, room, usedPackQuestionIds(room))
+    const drawn = await drawPrompt(tx, room, await usedPackQuestionIds(tx, room.id))
     if (!drawn) throw new AppError("No questions left to draw.", "CONFLICT")
     const now = new Date()
     await tx.round.create({
@@ -844,7 +953,7 @@ export async function skipQuestion(hostId: string, code: string) {
     if (!round || round.status !== "ANSWERING") {
       throw new AppError("You can skip a question while players are answering.", "CONFLICT")
     }
-    const drawn = await drawPrompt(tx, room, usedPackQuestionIds(room))
+    const drawn = await drawPrompt(tx, room, await usedPackQuestionIds(tx, room.id))
     if (!drawn) throw new AppError("No replacement question is available.", "CONFLICT")
     await tx.answer.deleteMany({ where: { roundId: round.id } })
     await tx.round.update({
@@ -1118,12 +1227,15 @@ export async function reportAnswer(input: {
     throw new AppError("Describe the report in 4 to 500 characters.", "VALIDATION")
   }
   const roomId = await roomIdForCode(input.code)
-  const room = await loadRoom(prisma, roomId)
-  const player = room.players.find((item) => item.userId === input.userId)
+  const player = await prisma.roomPlayer.findUnique({
+    where: { roomId_userId: { roomId, userId: input.userId } },
+    select: { id: true },
+  })
   if (!player) throw new AppError("You are not in this room.", "FORBIDDEN")
-  const answer = room.rounds
-    .flatMap((round) => round.answers)
-    .find((item) => item.id === input.answerId)
+  const answer = await prisma.answer.findFirst({
+    where: { id: input.answerId, round: { roomId } },
+    select: { id: true },
+  })
   if (!answer) throw new AppError("Answer not found.", "NOT_FOUND")
   await prisma.report.create({
     data: {
