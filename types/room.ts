@@ -34,6 +34,10 @@ export type AnswerView = {
   }
   yourGuessId: string | null
   votes?: RevealedVote[]
+  /** Scored votes that named someone else. Shown once authors are revealed. */
+  fooledCount?: number
+  /** Points the author earned for fooling those voters. */
+  bluffPoints?: number
 }
 
 export type LeaderRow = {
@@ -42,6 +46,7 @@ export type LeaderRow = {
   avatar: string
   score: number
   correctGuesses: number
+  fooled: number
   accuracy: number
   title: string
 }
@@ -86,6 +91,14 @@ export type RoomView = {
   answers: AnswerView[]
   reactions: { emoji: string; count: number }[]
   leaderboard: LeaderRow[]
+  serverNow: string
+  version: number
+}
+
+/** Returned by the state poll when the client's copy is still current. */
+export type RoomPollUnchanged = {
+  unchanged: true
+  version: number
   serverNow: string
 }
 
