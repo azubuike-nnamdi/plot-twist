@@ -27,7 +27,7 @@ const phases = [
     step: "03",
     label: "Phase 3: Reveal",
     title: "The plot twist",
-    body: "Authors are unveiled. Wrong guesses, missed guesses, and the author of an answer score 0.",
+    body: "Authors are unveiled. Correct guesses earn 100 points, and every player you fooled earns you 50.",
     note: "Then the leaderboard updates",
     chip: "bg-[#ffd166]/15 text-[#ffd166]",
   },
@@ -52,7 +52,7 @@ const features = [
   {
     icon: Sparkles,
     title: "Straight scoring",
-    body: "A correct guess is worth 100 points. The author does not score for their own answer.",
+    body: "A correct guess is worth 100 points. Fool a friend and your answer earns 50 bluff points.",
     tone: "bg-[#ff6b8a]/15 text-[#ff6b8a]",
   },
   {
@@ -89,7 +89,7 @@ export default function HomePage() {
               <p className="mt-5 max-w-xl text-lg text-muted-foreground">
                 The party game for friend groups and game night. Write anonymous
                 answers, figure out who said what, and score 100 points for every
-                correct guess.
+                correct guess. Fool your friends and your answer scores too.
               </p>
               <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:items-center">
                 <Link
