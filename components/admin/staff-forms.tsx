@@ -12,7 +12,7 @@ import {
 } from "@/app/actions/admin"
 
 const fieldClass =
-  "h-11 w-full rounded-lg border border-border bg-background px-3 text-sm outline-none focus:border-[#9b7bff]"
+  "h-11 w-full rounded-lg border border-border bg-background px-3 text-sm outline-none focus:border-primary"
 
 function Message({ state }: { state: ActionState }) {
   if (!state?.error && !state?.success) return null
@@ -46,7 +46,7 @@ export function QuestionForm({
       <label className="flex items-center gap-2 text-sm">
         <input type="checkbox" name="isAdult" /> 18+
       </label>
-      <button disabled={pending} className="h-11 rounded-lg bg-[#ff6b8a] font-semibold text-white">
+      <button disabled={pending} className="h-11 rounded-lg bg-primary font-semibold text-primary-foreground">
         Save question
       </button>
     </form>
@@ -83,7 +83,7 @@ export function GenerateQuestionsForm({
       <label className="flex items-center gap-2 text-sm">
         <input type="checkbox" name="isAdult" /> 18+
       </label>
-      <button disabled={pending} className="h-11 rounded-lg bg-[#9b7bff] font-semibold text-white">
+      <button disabled={pending} className="h-11 rounded-lg bg-primary font-semibold text-primary-foreground">
         {pending ? "Generating…" : "Generate questions"}
       </button>
     </form>
@@ -100,7 +100,7 @@ export function CategoryForm() {
       <label className="flex items-center gap-2 text-sm">
         <input type="checkbox" name="isAdult" /> 18+
       </label>
-      <button disabled={pending} className="h-11 rounded-lg bg-[#ff6b8a] font-semibold text-white">
+      <button disabled={pending} className="h-11 rounded-lg bg-primary font-semibold text-primary-foreground">
         Save category
       </button>
     </form>
@@ -152,7 +152,7 @@ export function SettingsForm({
           <input name={name} type="number" required defaultValue={value} className={fieldClass} />
         </label>
       ))}
-      <button disabled={pending} className="h-11 rounded-lg bg-[#ff6b8a] font-semibold text-white sm:col-span-2">
+      <button disabled={pending} className="h-11 rounded-lg bg-primary font-semibold text-primary-foreground sm:col-span-2">
         Save settings
       </button>
     </form>
