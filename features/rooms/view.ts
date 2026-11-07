@@ -65,13 +65,6 @@ export type ViewInput = {
     answers: Answer[]
     reactions: { emoji: string; playerId: string }[]
   }
-  prompts?: {
-    id: string
-    text: string
-    authorName: string
-    status: "PENDING" | "ACCEPTED"
-    isYours: boolean
-  }[]
   history: {
     guesserId: string
     authorId?: string
@@ -212,7 +205,6 @@ export function buildRoomView(input: ViewInput): RoomView {
         ? (round?.deadlineAt ?? null)
         : null,
     categories: input.categories,
-    prompts: phase === "LOBBY" ? (input.prompts ?? []) : [],
     askedBy: showAuthors ? (input.round?.askedBy ?? null) : null,
     isReplay: input.round?.isReplay === true && phase !== "LOBBY",
     categoryIds: input.categoryIds ?? [],
