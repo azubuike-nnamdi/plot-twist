@@ -24,7 +24,7 @@ export default function HowToPlayPage() {
         <ol className="mt-8 grid gap-4">
           {steps.map(([title, body], index) => (
             <li key={title} className="rounded-[20px] border border-border bg-card p-5">
-              <p className="font-mono text-sm text-[#ff6b8a]">0{index + 1}</p>
+              <p className="font-mono text-sm text-twist">0{index + 1}</p>
               <h2 className="mt-1 text-xl font-semibold">{title}</h2>
               <p className="mt-2 text-sm text-muted-foreground">{body}</p>
             </li>
