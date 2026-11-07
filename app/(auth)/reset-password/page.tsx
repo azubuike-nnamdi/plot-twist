@@ -26,7 +26,7 @@ export default async function ResetPasswordPage({
           ) : (
             <p className="mt-4 text-sm text-red-300">
               This reset link is missing or expired.{" "}
-              <Link href="/forgot-password" className="text-[#9b7bff]">
+              <Link href="/forgot-password" className="text-primary">
                 Request a new one.
               </Link>
             </p>
