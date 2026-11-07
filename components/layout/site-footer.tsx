@@ -9,7 +9,7 @@ const links = [
 
 export function SiteFooter() {
   return (
-    <footer className="border-t border-[#302d41] bg-[#1b1730] px-4 py-6 text-sm text-[#afadba]">
+    <footer className="border-t border-line bg-surface-2 px-4 py-6 text-sm text-muted-foreground">
       <div className="mx-auto max-w-6xl sm:px-2">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <p>© {new Date().getFullYear()} PlotTwist</p>
