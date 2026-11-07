@@ -315,19 +315,10 @@ describe("anonymity", () => {
 describe("prompt draw", () => {
   const first = () => 0
 
-  it("uses a player question before any pack card", () => {
+  it("deals an unseen pack card first", () => {
     expect(
       choosePrompt(
-        { playerPromptIds: ["asked"], unseenPackIds: ["fresh"], seenPackIds: ["old"] },
-        first
-      )
-    ).toEqual({ kind: "player", id: "asked" })
-  })
-
-  it("uses an unseen pack card when nobody asked a question", () => {
-    expect(
-      choosePrompt(
-        { playerPromptIds: [], unseenPackIds: ["fresh"], seenPackIds: ["old"] },
+        { unseenPackIds: ["fresh"], seenPackIds: ["old"] },
         first
       )
     ).toEqual({ kind: "pack", id: "fresh", isReplay: false })
@@ -335,7 +326,7 @@ describe("prompt draw", () => {
 
   it("replays a pack card only after the unseen pile is empty", () => {
     expect(
-      choosePrompt({ playerPromptIds: [], unseenPackIds: [], seenPackIds: ["old"] }, first)
+      choosePrompt({ unseenPackIds: [], seenPackIds: ["old"] }, first)
     ).toEqual({ kind: "pack", id: "old", isReplay: true })
   })
 })
