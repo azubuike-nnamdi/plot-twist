@@ -21,19 +21,19 @@ export function SampleRound() {
   const [picked, setPicked] = useState<string | null>(null)
 
   return (
-    <section className="rounded-2xl border border-[#302d41] bg-[#1b1730] p-4">
+    <section className="rounded-2xl border border-line bg-surface-2 p-4">
       <div className="flex items-center justify-between gap-3">
-        <p className="inline-flex items-center gap-2 rounded-full bg-[#9b7bff]/15 px-3 py-1 text-xs font-semibold text-[#9b7bff]">
-          <span className="size-2 rounded-full bg-[#10b981]" />
+        <p className="inline-flex items-center gap-2 rounded-full bg-primary/15 px-3 py-1 text-xs font-semibold text-primary">
+          <span className="size-2 rounded-full bg-success-strong" />
           Sample room
         </p>
-        <p className="text-xs font-semibold tracking-wide text-[#afadba]">VOTING</p>
+        <p className="text-xs font-semibold tracking-wide text-muted-foreground">VOTING</p>
       </div>
-      <div className="mt-4 rounded-xl border border-[#302d41] bg-[#100d1d] p-4">
-        <p className="text-xs font-semibold tracking-[0.14em] text-[#ff6b8a] uppercase">
+      <div className="mt-4 rounded-xl border border-line bg-background p-4">
+        <p className="text-xs font-semibold tracking-[0.14em] text-twist uppercase">
           Prompt round 02/05
         </p>
-        <p className="mt-2 font-display text-lg font-bold text-[#f6f6fa]">
+        <p className="mt-2 font-display text-lg font-bold text-foreground">
           “What would you never admit on a first date?”
         </p>
       </div>
@@ -48,8 +48,8 @@ export function SampleRound() {
               onClick={() => setPicked(answer.id)}
               className={
                 selected
-                  ? "rounded-xl border border-[#9b7bff] bg-[#9b7bff]/15 px-4 py-3 text-left text-sm text-[#f6f6fa]"
-                  : "rounded-xl border border-[#302d41] bg-[#100d1d] px-4 py-3 text-left text-sm text-[#f6f6fa] hover:border-[#9b7bff]"
+                  ? "rounded-xl border border-primary bg-primary/15 px-4 py-3 text-left text-sm text-foreground"
+                  : "rounded-xl border border-line bg-background px-4 py-3 text-left text-sm text-foreground hover:border-primary"
               }
             >
               {answer.text}
