@@ -70,7 +70,7 @@ export default async function JoinPage({
               {missing ? "We couldn't find that room." : "Enter a code to preview the lobby."}
             </p>
           )}
-          <Link href="/create" className="mt-6 inline-block text-sm text-[#9b7bff]">
+          <Link href="/create" className="mt-6 inline-block text-sm text-primary">
             Want to host instead?
           </Link>
         </aside>
