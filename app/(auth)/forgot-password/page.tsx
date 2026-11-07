@@ -20,7 +20,7 @@ export default function ForgotPasswordPage() {
           <div className="mt-6">
             <ForgotForm />
           </div>
-          <Link href="/login" className="mt-4 inline-block text-sm text-[#9b7bff]">
+          <Link href="/login" className="mt-4 inline-block text-sm text-primary">
             Back to log in
           </Link>
         </section>
