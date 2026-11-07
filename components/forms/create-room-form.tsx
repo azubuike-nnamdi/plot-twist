@@ -70,7 +70,7 @@ const PACK_ORDER = [
 
 const DEFAULT_PACKS = ["Awkward Confessions", "Wild Hypotheticals"]
 
-const panelClass = "rounded-[24px] border border-white/10 bg-[#161222] p-5"
+const panelClass = "rounded-[24px] border border-white/10 bg-surface p-5"
 
 type PackStyle = {
   icon: LucideIcon
@@ -83,35 +83,35 @@ const packStyles: Record<string, PackStyle> = {
   "Awkward Confessions": {
     icon: MessageCircleHeart,
     badge: "POPULAR",
-    badgeClass: "bg-[#ff6b8a]/15 text-[#ff8fab]",
-    iconClass: "bg-[#9b7bff]/20 text-[#c4b5fd]",
+    badgeClass: "bg-twist/15 text-twist-soft",
+    iconClass: "bg-primary/20 text-brand-soft",
   },
   "Pop Culture Chaos": {
     icon: Clapperboard,
     badge: "FRESH",
-    badgeClass: "bg-[#34d399]/15 text-[#6ee7b7]",
-    iconClass: "bg-white/10 text-[#d6d3e0]",
+    badgeClass: "bg-success/15 text-success",
+    iconClass: "bg-white/10 text-soft-foreground",
   },
   "Wild Hypotheticals": {
     icon: Zap,
-    badgeClass: "bg-[#ff6b8a]/15 text-[#ff8fab]",
-    iconClass: "bg-[#9b7bff]/20 text-[#c4b5fd]",
+    badgeClass: "bg-twist/15 text-twist-soft",
+    iconClass: "bg-primary/20 text-brand-soft",
   },
   "Office Shenanigans": {
     icon: Briefcase,
-    badgeClass: "bg-[#ff6b8a]/15 text-[#ff8fab]",
-    iconClass: "bg-white/10 text-[#d6d3e0]",
+    badgeClass: "bg-twist/15 text-twist-soft",
+    iconClass: "bg-white/10 text-soft-foreground",
   },
   "Deep and Dark Secrets": {
     icon: Eye,
     badge: "18+",
-    badgeClass: "bg-[#ff6b8a]/15 text-[#ff8fab]",
-    iconClass: "bg-white/10 text-[#d6d3e0]",
+    badgeClass: "bg-twist/15 text-twist-soft",
+    iconClass: "bg-white/10 text-soft-foreground",
   },
   "Wholesome Nonsense": {
     icon: Smile,
-    badgeClass: "bg-[#ff6b8a]/15 text-[#ff8fab]",
-    iconClass: "bg-white/10 text-[#d6d3e0]",
+    badgeClass: "bg-twist/15 text-twist-soft",
+    iconClass: "bg-white/10 text-soft-foreground",
   },
 }
 
@@ -123,8 +123,8 @@ function packStyle(pack: PromptPack): PackStyle {
   return {
     icon: Sparkles,
     badge: pack.isAdult ? "18+" : undefined,
-    badgeClass: "bg-[#ff6b8a]/15 text-[#ff8fab]",
-    iconClass: "bg-white/10 text-[#d6d3e0]",
+    badgeClass: "bg-twist/15 text-twist-soft",
+    iconClass: "bg-white/10 text-soft-foreground",
   }
 }
 
@@ -221,24 +221,24 @@ export function CreateRoomForm({
       <div className="flex items-center justify-between gap-3">
         <Link
           href="/"
-          className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3 py-1.5 text-sm text-[#d6d3e0] hover:bg-white/10"
+          className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3 py-1.5 text-sm text-soft-foreground hover:bg-white/10"
         >
           <ArrowLeft className="size-4" aria-hidden />
           Back to Home
         </Link>
-        <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1.5 text-xs font-medium text-[#d6d3e0]">
+        <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1.5 text-xs font-medium text-soft-foreground">
           Host Mode
         </span>
       </div>
 
-      <p className="mt-8 inline-flex items-center gap-2 rounded-full bg-[#9b7bff]/15 px-3 py-1 text-[11px] font-semibold tracking-[0.16em] text-[#c4b5fd] uppercase">
+      <p className="mt-8 inline-flex items-center gap-2 rounded-full bg-primary/15 px-3 py-1 text-[11px] font-semibold tracking-[0.16em] text-brand-soft uppercase">
         <Sparkles className="size-3.5" aria-hidden />
         Host a party session
       </p>
       <h1 className="font-display mt-4 text-4xl font-bold tracking-tight text-white sm:text-5xl">
         Configure Your Room
       </h1>
-      <p className="mt-3 max-w-xl text-sm leading-6 text-[#b7b3c7] sm:text-base">
+      <p className="mt-3 max-w-xl text-sm leading-6 text-muted-foreground sm:text-base">
         Pick your prompt vibes, set timer stakes, and adjust custom rules. Friends join instantly
         with your room code.
       </p>
@@ -250,28 +250,28 @@ export function CreateRoomForm({
           <section className={panelClass}>
             <div className="flex items-start justify-between gap-3">
               <div className="flex items-start gap-3">
-                <span className="flex size-9 items-center justify-center rounded-full bg-[#9b7bff]/15 text-[#c4b5fd]">
+                <span className="flex size-9 items-center justify-center rounded-full bg-primary/15 text-brand-soft">
                   <Sparkles className="size-4" aria-hidden />
                 </span>
                 <div>
                   <h2 className="font-semibold text-white">Room Identity</h2>
-                  <p className="text-sm text-[#9c98ad]">What your crew sees when they hop in</p>
+                  <p className="text-sm text-muted-foreground">What your crew sees when they hop in</p>
                 </div>
               </div>
               <button
                 type="button"
                 onClick={handleRandomize}
-                className="inline-flex items-center gap-1.5 text-sm font-medium text-[#c4b5fd] hover:text-white"
+                className="inline-flex items-center gap-1.5 text-sm font-medium text-brand-soft hover:text-white"
               >
                 <Shuffle className="size-4" aria-hidden />
                 Randomize
               </button>
             </div>
 
-            <label htmlFor="room-name" className="mt-5 block text-[11px] font-semibold tracking-[0.14em] text-[#9c98ad] uppercase">
+            <label htmlFor="room-name" className="mt-5 block text-[11px] font-semibold tracking-[0.14em] text-muted-foreground uppercase">
               Room name
             </label>
-            <div className="mt-2 flex items-center gap-3 rounded-2xl border border-white/10 bg-[#100d1c] px-4">
+            <div className="mt-2 flex items-center gap-3 rounded-2xl border border-white/10 bg-background px-4">
               <input
                 id="room-name"
                 name="name"
@@ -282,30 +282,30 @@ export function CreateRoomForm({
                 onChange={(event) => setName(event.target.value.slice(0, 32))}
                 className="h-12 min-w-0 flex-1 bg-transparent text-sm text-white outline-none"
               />
-              <span className="shrink-0 text-xs text-[#8d89a0]">
+              <span className="shrink-0 text-xs text-muted-foreground">
                 {name.length}/32
               </span>
             </div>
 
             <div className="mt-4 grid gap-3 sm:grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)]">
-              <div className="flex items-center gap-3 rounded-2xl border border-[#9b7bff]/40 bg-[#9b7bff]/10 px-4 py-3">
-                <span className="flex size-10 items-center justify-center rounded-full bg-[#9b7bff]/20 text-[#c4b5fd]">
+              <div className="flex items-center gap-3 rounded-2xl border border-primary/40 bg-primary/10 px-4 py-3">
+                <span className="flex size-10 items-center justify-center rounded-full bg-primary/20 text-brand-soft">
                   <Lock className="size-4" aria-hidden />
                 </span>
                 <span className="min-w-0 flex-1">
                   <span className="block text-sm font-semibold text-white">Private Lobby</span>
-                  <span className="block text-xs text-[#b7b3c7]">Passcode PIN needed to join</span>
+                  <span className="block text-xs text-muted-foreground">Passcode PIN needed to join</span>
                 </span>
-                <span className="flex size-6 items-center justify-center rounded-full bg-[#9b7bff] text-[#100d1d]">
+                <span className="flex size-6 items-center justify-center rounded-full bg-primary text-primary-foreground">
                   <Check className="size-3.5" aria-hidden />
                 </span>
               </div>
 
               <fieldset>
-                <legend className="flex items-center gap-2 text-[11px] font-semibold tracking-[0.14em] text-[#9c98ad] uppercase">
+                <legend className="flex items-center gap-2 text-[11px] font-semibold tracking-[0.14em] text-muted-foreground uppercase">
                   <Users className="size-3.5" aria-hidden />
                   Player capacity
-                  <span className="ml-auto normal-case tracking-normal text-[#d6d3e0]">
+                  <span className="ml-auto normal-case tracking-normal text-soft-foreground">
                     {maxPlayers} Players
                   </span>
                 </legend>
@@ -318,8 +318,8 @@ export function CreateRoomForm({
                         className={cn(
                           "flex h-10 cursor-pointer items-center justify-center rounded-xl text-sm font-semibold",
                           selected
-                            ? "bg-[#ff6b8a] text-white"
-                            : "bg-[#2a2438] text-[#d6d3e0] hover:bg-[#342d46]"
+                            ? "bg-primary text-primary-foreground"
+                            : "bg-[#2a2438] text-soft-foreground hover:bg-[#342d46]"
                         )}
                       >
                         <input
@@ -342,17 +342,17 @@ export function CreateRoomForm({
           <section className={panelClass}>
             <div className="flex items-start justify-between gap-3">
               <div className="flex items-start gap-3">
-                <span className="flex size-9 items-center justify-center rounded-full bg-[#ff6b8a]/15 text-[#ff8fab]">
+                <span className="flex size-9 items-center justify-center rounded-full bg-twist/15 text-twist-soft">
                   <Sparkles className="size-4" aria-hidden />
                 </span>
                 <div>
                   <h2 className="flex flex-wrap items-center gap-2 font-semibold text-white">
                     Prompt Category Packs
-                    <span className="rounded-full bg-[#ff6b8a]/15 px-2 py-0.5 text-[11px] font-semibold text-[#ff8fab]">
+                    <span className="rounded-full bg-twist/15 px-2 py-0.5 text-[11px] font-semibold text-twist-soft">
                       {selectedPacks.length} Selected
                     </span>
                   </h2>
-                  <p className="text-sm text-[#9c98ad]">
+                  <p className="text-sm text-muted-foreground">
                     Select multiple packs to blend variety into each round
                   </p>
                 </div>
@@ -360,7 +360,7 @@ export function CreateRoomForm({
               <button
                 type="button"
                 onClick={handleSelectAll}
-                className="text-sm font-medium text-[#c4b5fd] hover:text-white"
+                className="text-sm font-medium text-brand-soft hover:text-white"
               >
                 Select All
               </button>
@@ -379,8 +379,8 @@ export function CreateRoomForm({
                       "flex cursor-pointer gap-3 rounded-2xl border px-3.5 py-3.5",
                       locked && "cursor-not-allowed opacity-40",
                       selected
-                        ? "border-[#a78bfa] bg-[#9b7bff]/10"
-                        : "border-white/10 bg-[#120f1c] hover:border-white/15"
+                        ? "border-primary bg-primary/10"
+                        : "border-white/10 bg-background hover:border-white/15"
                     )}
                   >
                     <input
@@ -409,7 +409,7 @@ export function CreateRoomForm({
                           className={cn(
                             "mt-0.5 flex size-5 shrink-0 items-center justify-center rounded-full border",
                             selected
-                              ? "border-[#a78bfa] bg-[#a78bfa] text-[#100d1d]"
+                              ? "border-primary bg-primary text-primary-foreground"
                               : "border-white/20"
                           )}
                           aria-hidden
@@ -417,14 +417,14 @@ export function CreateRoomForm({
                           {selected ? <Check className="size-3" /> : null}
                         </span>
                       </span>
-                      <span className="mt-1 block text-xs text-[#8d89a0]">{pack.cardCount} cards</span>
-                      <span className="mt-1 block text-sm leading-5 text-[#b7b3c7]">{pack.description}</span>
+                      <span className="mt-1 block text-xs text-muted-foreground">{pack.cardCount} cards</span>
+                      <span className="mt-1 block text-sm leading-5 text-muted-foreground">{pack.description}</span>
                     </span>
                   </label>
                 )
               })}
             </div>
-            <label className="mt-4 flex cursor-pointer items-start gap-3 rounded-2xl border border-white/10 bg-[#120f1c] px-3.5 py-3">
+            <label className="mt-4 flex cursor-pointer items-start gap-3 rounded-2xl border border-white/10 bg-background px-3.5 py-3">
               <input
                 type="checkbox"
                 name="adultConfirmed"
@@ -434,7 +434,7 @@ export function CreateRoomForm({
               />
               <span>
                 <span className="block text-sm font-semibold text-white">This room is 18+</span>
-                <span className="mt-1 block text-xs leading-5 text-[#9c98ad]">
+                <span className="mt-1 block text-xs leading-5 text-muted-foreground">
                   Confirm this before an adult pack can be selected. The clean filter still keeps those packs out while it is on.
                 </span>
               </span>
@@ -444,23 +444,23 @@ export function CreateRoomForm({
           <section className={panelClass}>
             <div className="flex items-start justify-between gap-3">
               <div className="flex items-start gap-3">
-                <span className="flex size-9 items-center justify-center rounded-full bg-[#f5c16c]/15 text-[#f5c16c]">
+                <span className="flex size-9 items-center justify-center rounded-full bg-gold/15 text-gold">
                   <Clock3 className="size-4" aria-hidden />
                 </span>
                 <div>
                   <h2 className="font-semibold text-white">Rounds & Turn Clock</h2>
-                  <p className="text-sm text-[#9c98ad]">
+                  <p className="text-sm text-muted-foreground">
                     Fine-tune the tension and pacing. Every match stays under 10 minutes.
                   </p>
                 </div>
               </div>
-              <p className="text-sm font-medium text-[#d6d3e0]">
+              <p className="text-sm font-medium text-soft-foreground">
                 {totalRounds} Rounds (~{minutes} min)
               </p>
             </div>
 
             <fieldset className="mt-5">
-              <legend className="text-[11px] font-semibold tracking-[0.14em] text-[#9c98ad] uppercase">
+              <legend className="text-[11px] font-semibold tracking-[0.14em] text-muted-foreground uppercase">
                 Game length (rounds)
               </legend>
               <div className="mt-3 grid gap-3 sm:grid-cols-3">
@@ -473,8 +473,8 @@ export function CreateRoomForm({
                       className={cn(
                         "cursor-pointer rounded-2xl px-3 py-4 text-center",
                         selected
-                          ? "bg-[#c4b5fd] text-[#24143a]"
-                          : "bg-[#221c33] text-white hover:bg-[#2c2540]"
+                          ? "bg-brand-soft text-primary-foreground"
+                          : "bg-surface-2 text-white hover:bg-[#2c2540]"
                       )}
                     >
                       <input
@@ -487,7 +487,7 @@ export function CreateRoomForm({
                       />
                       <span className="block text-3xl font-bold">{preset.rounds}</span>
                       <span className="mt-1 block text-sm font-semibold">{preset.label}</span>
-                      <span className={cn("mt-1 block text-xs", selected ? "text-[#4c3b73]" : "text-[#9c98ad]")}>
+                      <span className={cn("mt-1 block text-xs", selected ? "text-[#4c3b73]" : "text-muted-foreground")}>
                         ~{presetMinutes} min
                       </span>
                     </label>
@@ -497,9 +497,9 @@ export function CreateRoomForm({
             </fieldset>
 
             <div className="mt-6 flex flex-wrap items-center justify-between gap-2">
-              <p className="text-[11px] font-semibold tracking-[0.14em] text-[#9c98ad] uppercase">
+              <p className="text-[11px] font-semibold tracking-[0.14em] text-muted-foreground uppercase">
                 Response timer
-                <span className="ml-2 rounded-full bg-[#ff6b8a]/15 px-2 py-0.5 text-[11px] font-semibold tracking-normal text-[#ff8fab] normal-case">
+                <span className="ml-2 rounded-full bg-twist/15 px-2 py-0.5 text-[11px] font-semibold tracking-normal text-twist-soft normal-case">
                   {answerTimer}s Per Prompt
                 </span>
               </p>
@@ -524,25 +524,25 @@ export function CreateRoomForm({
               style={{
                 background: `linear-gradient(to right, #c4b5fd ${sliderPercent}%, #3a3450 ${sliderPercent}%)`,
               }}
-              className="mt-4 h-2 w-full cursor-pointer appearance-none rounded-full [&::-moz-range-thumb]:size-5 [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:border-[3px] [&::-moz-range-thumb]:border-[#d8c7ff] [&::-moz-range-thumb]:bg-white [&::-webkit-slider-thumb]:size-5 [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:border-[3px] [&::-webkit-slider-thumb]:border-[#d8c7ff] [&::-webkit-slider-thumb]:bg-white"
+              className="mt-4 h-2 w-full cursor-pointer appearance-none rounded-full [&::-moz-range-thumb]:size-5 [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:border-[3px] [&::-moz-range-thumb]:border-brand-soft [&::-moz-range-thumb]:bg-white [&::-webkit-slider-thumb]:size-5 [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:border-[3px] [&::-webkit-slider-thumb]:border-brand-soft [&::-webkit-slider-thumb]:bg-white"
             />
-            <div className="mt-3 grid grid-cols-3 text-xs text-[#9c98ad]">
+            <div className="mt-3 grid grid-cols-3 text-xs text-muted-foreground">
               <span>20s (Rapid Fire)</span>
               <span className="text-center">30s (Balanced)</span>
               <span className="text-right">45s (Thoughtful)</span>
             </div>
 
             <div className="mt-6 border-t border-white/10 pt-5">
-              <p className="text-[11px] font-semibold tracking-[0.14em] text-[#9c98ad] uppercase">
+              <p className="text-[11px] font-semibold tracking-[0.14em] text-muted-foreground uppercase">
                 Game modifiers
               </p>
               <label className="mt-3 flex cursor-pointer items-center gap-3">
-                <span className="flex size-9 items-center justify-center rounded-full bg-[#34d399]/15 text-[#6ee7b7]">
+                <span className="flex size-9 items-center justify-center rounded-full bg-success/15 text-success">
                   <ShieldCheck className="size-4" aria-hidden />
                 </span>
                 <span className="min-w-0 flex-1">
                   <span className="block text-sm font-semibold text-white">Clean Prompt Filter</span>
-                  <span className="block text-xs text-[#9c98ad]">
+                  <span className="block text-xs text-muted-foreground">
                     Excludes 18+ packs, spicy prompts, and provocative themes
                   </span>
                 </span>
@@ -556,7 +556,7 @@ export function CreateRoomForm({
                 <span
                   className={cn(
                     "relative h-7 w-12 rounded-full transition-colors",
-                    cleanFilter ? "bg-[#c4b5fd]" : "bg-[#3a3450]"
+                    cleanFilter ? "bg-brand-soft" : "bg-muted"
                   )}
                   aria-hidden
                 >
@@ -573,42 +573,42 @@ export function CreateRoomForm({
         </div>
 
         <aside className="grid gap-4 lg:sticky lg:top-6">
-          <section className="overflow-hidden rounded-[24px] border border-white/10 bg-[#161222]">
-            <div className="h-1.5 bg-linear-to-r from-[#ff6b8a] via-[#c084fc] to-[#f5c16c]" />
+          <section className="overflow-hidden rounded-[24px] border border-white/10 bg-surface">
+            <div className="h-1.5 bg-linear-to-r from-twist via-[#c084fc] to-gold" />
             <div className="p-5">
               <div className="flex items-center justify-between gap-3">
-                <p className="text-[11px] font-semibold tracking-[0.16em] text-[#9c98ad] uppercase">
+                <p className="text-[11px] font-semibold tracking-[0.16em] text-muted-foreground uppercase">
                   Lobby ticket preview
                 </p>
-                <span className="rounded-full bg-[#9b7bff]/20 px-2 py-1 text-[10px] font-bold tracking-wide text-[#c4b5fd]">
+                <span className="rounded-full bg-primary/20 px-2 py-1 text-[10px] font-bold tracking-wide text-brand-soft">
                   Ready to host
                 </span>
               </div>
 
-              <div className="mt-4 rounded-2xl border border-white/10 bg-[#100d1c] p-4">
+              <div className="mt-4 rounded-2xl border border-white/10 bg-background p-4">
                 <div className="flex items-start justify-between gap-3">
                   <div>
-                    <p className="text-[10px] font-semibold tracking-[0.14em] text-[#8d89a0] uppercase">
+                    <p className="text-[10px] font-semibold tracking-[0.14em] text-muted-foreground uppercase">
                       Room title
                     </p>
                     <p className="mt-1 text-lg font-bold text-white">{name || "Untitled room"}</p>
                   </div>
-                  <p className="font-mono text-xs tracking-widest text-[#c4b5fd]">TWST-••••••••</p>
+                  <p className="font-mono text-xs tracking-widest text-brand-soft">TWST-••••••••</p>
                 </div>
                 <div className="mt-4 flex items-center gap-3">
                   <AvatarImage avatar={host.avatar && host.avatar.length > 0 ? host.avatar : "cipher"} alt="" className="size-10 shrink-0" />
                   <span className="min-w-0">
-                    <span className="block text-[10px] font-semibold tracking-[0.14em] text-[#8d89a0] uppercase">
+                    <span className="block text-[10px] font-semibold tracking-[0.14em] text-muted-foreground uppercase">
                       Room host
                     </span>
                     <span className="mt-0.5 flex flex-wrap items-center gap-2 text-sm text-white">
                       <span className="truncate font-semibold">{hostName}</span>
-                      <span className="rounded-full bg-[#ff6b8a] px-1.5 py-0.5 text-[10px] font-bold text-[#100d1d]">
+                      <span className="rounded-full bg-primary px-1.5 py-0.5 text-[10px] font-bold text-primary-foreground">
                         HOST
                       </span>
                     </span>
-                    <span className="mt-1 flex items-center gap-3 text-xs text-[#b7b3c7]">
-                      <span className="inline-flex items-center gap-1 text-[#6ee7b7]">
+                    <span className="mt-1 flex items-center gap-3 text-xs text-muted-foreground">
+                      <span className="inline-flex items-center gap-1 text-success">
                         <Check className="size-3.5" aria-hidden />
                         Ready
                       </span>
@@ -620,30 +620,30 @@ export function CreateRoomForm({
 
               <dl className="mt-4 grid gap-3 text-sm">
                 <div className="flex items-center justify-between gap-3">
-                  <dt className="text-[#b7b3c7]">Game rounds</dt>
+                  <dt className="text-muted-foreground">Game rounds</dt>
                   <dd className="font-semibold text-white">{totalRounds} Rounds</dd>
                 </div>
                 <div className="flex items-center justify-between gap-3">
-                  <dt className="inline-flex items-center gap-2 text-[#b7b3c7]">
-                    <Timer className="size-4 text-[#c4b5fd]" aria-hidden />
+                  <dt className="inline-flex items-center gap-2 text-muted-foreground">
+                    <Timer className="size-4 text-brand-soft" aria-hidden />
                     Answer timer
                   </dt>
                   <dd className="font-semibold text-white">{answerTimer} Seconds</dd>
                 </div>
                 <div className="flex items-center justify-between gap-3">
-                  <dt className="text-[#b7b3c7]">Guessing</dt>
+                  <dt className="text-muted-foreground">Guessing</dt>
                   <dd className="font-semibold text-white">{guessingTimer} Seconds</dd>
                 </div>
                 <div className="flex items-center justify-between gap-3">
-                  <dt className="inline-flex items-center gap-2 text-[#b7b3c7]">
-                    <Users className="size-4 text-[#c4b5fd]" aria-hidden />
+                  <dt className="inline-flex items-center gap-2 text-muted-foreground">
+                    <Users className="size-4 text-brand-soft" aria-hidden />
                     Max capacity
                   </dt>
                   <dd className="font-semibold text-white">{maxPlayers} Players</dd>
                 </div>
                 <div className="flex items-center justify-between gap-3">
-                  <dt className="inline-flex items-center gap-2 text-[#b7b3c7]">
-                    <Lock className="size-4 text-[#c4b5fd]" aria-hidden />
+                  <dt className="inline-flex items-center gap-2 text-muted-foreground">
+                    <Lock className="size-4 text-brand-soft" aria-hidden />
                     Lobby privacy
                   </dt>
                   <dd className="font-semibold text-white">Private (PIN required)</dd>
@@ -651,12 +651,12 @@ export function CreateRoomForm({
               </dl>
 
               <div className="mt-4">
-                <p className="text-[11px] font-semibold tracking-[0.14em] text-[#9c98ad] uppercase">
+                <p className="text-[11px] font-semibold tracking-[0.14em] text-muted-foreground uppercase">
                   Active prompt packs ({selectedPacks.length})
                 </p>
                 <div className="mt-2 flex flex-wrap gap-2">
                   {selectedPacks.length === 0 ? (
-                    <span className="text-sm text-[#9c98ad]">Pick at least one pack.</span>
+                    <span className="text-sm text-muted-foreground">Pick at least one pack.</span>
                   ) : (
                     selectedPacks.map((pack) => (
                       <span
@@ -670,28 +670,28 @@ export function CreateRoomForm({
                 </div>
               </div>
 
-              <p className="mt-4 rounded-2xl border border-[#f5c16c]/30 bg-[#f5c16c]/10 px-3 py-3 text-sm text-[#f8e7c0]">
+              <p className="mt-4 rounded-2xl border border-gold/30 bg-gold/10 px-3 py-3 text-sm text-[#f8e7c0]">
                 Estimated duration · ~{minutes} {minutes === 1 ? "minute" : "minutes"} of pure chaos.
               </p>
 
               <button
                 disabled={pending || selectedPacks.length === 0}
-                className="mt-4 flex h-12 w-full items-center justify-center gap-2 rounded-2xl bg-[#c4b5fd] text-sm font-bold tracking-wide text-[#24143a] uppercase disabled:opacity-50"
+                className="mt-4 flex h-12 w-full items-center justify-center gap-2 rounded-2xl bg-brand-soft text-sm font-bold tracking-wide text-primary-foreground uppercase disabled:opacity-50"
               >
                 <Sparkles className="size-4" aria-hidden />
                 {pending ? "Creating room…" : "Generate room and enter lobby"}
               </button>
-              <p className="mt-3 text-center text-xs leading-5 text-[#8d89a0]">
+              <p className="mt-3 text-center text-xs leading-5 text-muted-foreground">
                 Share the room code from the lobby. The match starts once at least three players are in.
               </p>
             </div>
           </section>
 
           <section className={cn(panelClass, "flex gap-3")}>
-            <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-white/10 text-[#c4b5fd]">
+            <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-white/10 text-brand-soft">
               <Info className="size-4" aria-hidden />
             </span>
-            <p className="text-sm leading-6 text-[#b7b3c7]">
+            <p className="text-sm leading-6 text-muted-foreground">
               <span className="font-semibold text-white">Host Pro-Tip: </span>
               For maximum laughs, mix at least two distinct categories (like Awkward Confessions +
               Office Shenanigans). Best group size is 4 to 8 players.
