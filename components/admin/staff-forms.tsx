@@ -5,6 +5,7 @@ import { useActionState } from "react"
 import {
   closeRoomAction,
   generateQuestionsAction,
+  refreshQuestionsNowAction,
   saveCategoryAction,
   saveQuestionAction,
   settingsAction,
@@ -61,9 +62,10 @@ export function GenerateQuestionsForm({
   const [state, action, pending] = useActionState(generateQuestionsAction, null)
   return (
     <form action={action} className="grid gap-3">
-      <h2 className="font-semibold">Generate with Ollama</h2>
+      <h2 className="font-semibold">Top up a pack with Ollama</h2>
       <p className="text-sm text-muted-foreground">
-        Drafts stay inactive until you publish them. A live round does not wait on this.
+        Every pack gets a fresh batch at midnight UTC. Use this to add more today. Questions pass
+        the automatic safety filter and go live right away. A live round does not wait on this.
       </p>
       <Message state={state} />
       <select name="categoryId" required className={fieldClass} defaultValue="">
@@ -78,13 +80,27 @@ export function GenerateQuestionsForm({
       </select>
       <label className="grid gap-1 text-sm">
         How many
-        <input name="count" type="number" min={1} max={8} defaultValue={5} required className={fieldClass} />
-      </label>
-      <label className="flex items-center gap-2 text-sm">
-        <input type="checkbox" name="isAdult" /> 18+
+        <input name="count" type="number" min={1} max={20} defaultValue={10} required className={fieldClass} />
       </label>
       <button disabled={pending} className="h-11 rounded-lg bg-primary font-semibold text-primary-foreground">
         {pending ? "Generating…" : "Generate questions"}
+      </button>
+    </form>
+  )
+}
+
+export function RefreshQuestionsForm() {
+  const [state, action, pending] = useActionState(refreshQuestionsNowAction, null)
+  return (
+    <form action={action} className="grid gap-3">
+      <h2 className="font-semibold">Run the midnight refresh now</h2>
+      <p className="text-sm text-muted-foreground">
+        Generates a new batch for every pack and retires the old one. A pack whose generation fails
+        keeps its current questions. This can take a minute or two.
+      </p>
+      <Message state={state} />
+      <button disabled={pending} className="h-11 rounded-lg border border-border font-semibold">
+        {pending ? "Refreshing every pack…" : "Refresh all packs"}
       </button>
     </form>
   )
