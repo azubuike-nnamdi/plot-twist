@@ -26,14 +26,14 @@ export default async function AdminLayout({
   const user = await requireStaffPage()
   return (
     <div className="min-h-screen bg-background md:grid md:grid-cols-[220px_minmax(0,1fr)]">
-      <aside className="border-b border-border bg-[#1b1730] p-4 md:border-r md:border-b-0">
+      <aside className="border-b border-border bg-surface-2 p-4 md:border-r md:border-b-0">
         <Link href="/" className="font-display text-xl font-bold">
           PlotTwist
         </Link>
         <p className="mt-1 text-xs text-muted-foreground">{user.username ?? user.email}</p>
         <nav className="mt-4 flex gap-1 overflow-x-auto text-sm md:grid md:overflow-visible">
           {links.map(([label, href]) => (
-            <Link key={href} href={href} className="shrink-0 rounded-lg px-3 py-2 hover:bg-[#302d41]">
+            <Link key={href} href={href} className="shrink-0 rounded-lg px-3 py-2 hover:bg-muted">
               {label}
             </Link>
           ))}

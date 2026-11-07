@@ -29,7 +29,7 @@ export function JoinCodeForm() {
         autoCapitalize="characters"
         className="h-full min-w-0 flex-1 bg-transparent px-3 font-mono text-sm tracking-wide outline-none sm:tracking-widest"
       />
-      <button className="h-11 shrink-0 rounded-lg bg-[#ff6b8a] px-5 text-sm font-semibold text-white">
+      <button className="h-11 shrink-0 rounded-lg bg-primary px-5 text-sm font-semibold text-primary-foreground">
         Join
       </button>
     </form>

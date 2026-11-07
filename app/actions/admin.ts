@@ -15,7 +15,7 @@ import {
   suspendReportedUser,
   updateSettings,
 } from "@/features/admin/service"
-import { generateQuestions } from "@/features/questions/generate"
+import { generateQuestions, refreshQuestionsNow } from "@/features/questions/generate"
 import { requireStaff } from "@/lib/auth/session"
 import { errorMessage } from "@/lib/errors"
 
@@ -57,10 +57,31 @@ export async function generateQuestionsAction(
       actorId: actor.id,
       categoryId: String(formData.get("categoryId") ?? ""),
       count: Number(formData.get("count") ?? ""),
-      isAdult: formData.get("isAdult") === "on",
     })
     revalidatePath("/admin/questions")
-    return { success: `Saved ${saved} inactive ${saved === 1 ? "question" : "questions"}.` }
+    return {
+      success: `Published ${saved} ${saved === 1 ? "question" : "questions"}. They are replaced at midnight UTC.`,
+    }
+  } catch (error) {
+    return fail(error)
+  }
+}
+
+export async function refreshQuestionsNowAction(): Promise<ActionState> {
+  try {
+    const actor = await requireStaff()
+    const results = await refreshQuestionsNow({ actorRole: actor.role, actorId: actor.id })
+    revalidatePath("/admin/questions")
+    const saved = results.reduce((sum, result) => sum + result.saved, 0)
+    const failed = results.filter((result) => result.error)
+    if (failed.length > 0) {
+      return {
+        error: `Published ${saved} questions. Kept yesterday's batch for ${failed
+          .map((result) => `${result.pack} (${result.error})`)
+          .join(", ")}.`,
+      }
+    }
+    return { success: `Published ${saved} fresh questions across ${results.length} packs.` }
   } catch (error) {
     return fail(error)
   }

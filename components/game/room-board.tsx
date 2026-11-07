@@ -32,7 +32,6 @@ import { ClaimAccountForm } from "@/components/forms/claim-account-form"
 import type { PromptPack } from "@/components/forms/create-room-form"
 import { useGuessStore } from "@/components/game/guess-store"
 import { LobbySettings } from "@/components/game/lobby-settings"
-import { PlayerPrompts } from "@/components/game/player-prompts"
 import { useRoomChannel } from "@/components/game/use-room-channel"
 import {
   roomQueryKey,
@@ -128,20 +127,20 @@ function RoomClock({
     >
       <p
         className={`text-right font-mono text-3xl tabular-nums ${
-          urgent ? "animate-pulse text-[#ff6b8a]" : "text-[#f6f6fa]"
+          urgent ? "animate-pulse text-twist" : "text-foreground"
         }`}
       >
         {current.label}
       </p>
       <div
         aria-hidden
-        className="h-1.5 overflow-hidden rounded-full bg-[#302d41]"
+        className="h-1.5 overflow-hidden rounded-full bg-muted"
       >
         <div
           className={`h-full rounded-full transition-[width] duration-300 ease-linear ${
             urgent
-              ? "bg-[#ff6b8a]"
-              : "bg-linear-to-r from-[#9b7bff] to-[#ffd166]"
+              ? "bg-twist"
+              : "bg-linear-to-r from-primary to-gold"
           }`}
           style={{ width: `${percent}%` }}
         />
@@ -169,7 +168,7 @@ function RoomConnection({
     return (
       <p
         role="status"
-        className="mt-4 rounded-lg bg-[#f5c16c]/10 px-3 py-2 text-sm text-[#f5c16c]"
+        className="mt-4 rounded-lg bg-gold/10 px-3 py-2 text-sm text-gold"
       >
         Reconnecting
       </p>
@@ -344,27 +343,27 @@ function Lobby({
     <div className="grid gap-4">
       <div className="grid gap-4 lg:grid-cols-[minmax(0,1.2fr)_minmax(0,0.8fr)] lg:items-start">
         <div className="grid content-start gap-4">
-          <section className="rounded-[20px] border border-[#302d41] bg-[#1b1730] p-4 sm:p-5">
+          <section className="rounded-[20px] border border-line bg-surface-2 p-4 sm:p-5">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div className="flex flex-wrap items-center gap-3">
-                <p className="rounded-full bg-[#9b7bff]/20 px-2.5 py-1 text-[10px] font-semibold tracking-[0.14em] text-[#c4b5fd] uppercase">
+                <p className="rounded-full bg-primary/20 px-2.5 py-1 text-[10px] font-semibold tracking-[0.14em] text-brand-soft uppercase">
                   Private lounge
                 </p>
-                <p className="inline-flex items-center gap-2 text-sm text-[#f6f6fa]">
-                  <span className="size-2 rounded-full bg-[#34d399]" />
+                <p className="inline-flex items-center gap-2 text-sm text-foreground">
+                  <span className="size-2 rounded-full bg-success" />
                   {seatsLeft === 0 ? "Room full" : "Accepting players"}
                 </p>
               </div>
             </div>
-            <div className="@container/code mt-5 rounded-2xl border border-[#302d41] bg-[#100d1d] p-4">
+            <div className="@container/code mt-5 rounded-2xl border border-line bg-background p-4">
               <div className="flex flex-col gap-4 @min-[36rem]/code:flex-row @min-[36rem]/code:items-center @min-[36rem]/code:justify-between">
                 <div className="min-w-0">
-                  <p className="text-[11px] font-semibold tracking-[0.16em] text-[#afadba] uppercase">
+                  <p className="text-[11px] font-semibold tracking-[0.16em] text-muted-foreground uppercase">
                     Room code
                   </p>
-                  <p className="mt-1 flex flex-wrap items-center gap-2 font-display text-2xl font-bold tracking-wide whitespace-nowrap text-[#f6f6fa] sm:text-3xl @min-[36rem]/code:text-4xl">
+                  <p className="mt-1 flex flex-wrap items-center gap-2 font-display text-2xl font-bold tracking-wide whitespace-nowrap text-foreground sm:text-3xl @min-[36rem]/code:text-4xl">
                     {formatRoomCode(view.code)}
-                    <span className="rounded-full bg-[#ffd166] px-2 py-0.5 font-sans text-[10px] font-bold text-[#100d1d]">
+                    <span className="rounded-full bg-gold px-2 py-0.5 font-sans text-[10px] font-bold text-primary-foreground">
                       CODE
                     </span>
                   </p>
@@ -372,7 +371,7 @@ function Lobby({
                 <button
                   type="button"
                   onClick={handleCopyInvite}
-                  className="inline-flex h-11 w-full shrink-0 items-center justify-center gap-2 rounded-xl bg-[#9b7bff] px-4 text-sm font-semibold whitespace-nowrap text-[#100d1d] @min-[36rem]/code:w-auto"
+                  className="inline-flex h-11 w-full shrink-0 items-center justify-center gap-2 rounded-xl bg-primary px-4 text-sm font-semibold whitespace-nowrap text-primary-foreground @min-[36rem]/code:w-auto"
                 >
                   <Copy aria-hidden className="size-4" />
                   {notice?.text === "Invite link copied"
@@ -381,27 +380,27 @@ function Lobby({
                 </button>
               </div>
             </div>
-            <div className="mt-4 flex flex-wrap gap-2 text-xs text-[#afadba]">
-              <span className="rounded-full border border-[#302d41] px-3 py-1">
+            <div className="mt-4 flex flex-wrap gap-2 text-xs text-muted-foreground">
+              <span className="rounded-full border border-line px-3 py-1">
                 {view.categories.join(" · ") || "All packs"}
               </span>
-              <span className="rounded-full border border-[#302d41] px-3 py-1">
+              <span className="rounded-full border border-line px-3 py-1">
                 {view.answerSeconds}s answering
               </span>
-              <span className="rounded-full border border-[#302d41] px-3 py-1">
+              <span className="rounded-full border border-line px-3 py-1">
                 {view.totalRounds} rounds
               </span>
             </div>
           </section>
-          <section className="rounded-[20px] border border-[#302d41] bg-[#1b1730] p-4 sm:p-5">
+          <section className="rounded-[20px] border border-line bg-surface-2 p-4 sm:p-5">
             <div className="flex flex-wrap items-end justify-between gap-2">
-              <h2 className="text-lg font-semibold text-[#f6f6fa]">
+              <h2 className="text-lg font-semibold text-foreground">
                 In the lounge ({joined}){" "}
-                <span className="ml-1 rounded-full bg-[#302d41] px-2 py-0.5 text-xs font-medium text-[#afadba]">
+                <span className="ml-1 rounded-full bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground">
                   {readyCount}/{joined || 0} ready
                 </span>
               </h2>
-              <p className="text-sm text-[#afadba]">
+              <p className="text-sm text-muted-foreground">
                 Pass {formatRoomCode(view.code)} to friends
               </p>
             </div>
@@ -409,7 +408,7 @@ function Lobby({
               {view.players.map((player) => (
                 <li
                   key={player.id}
-                  className="flex items-center gap-3 rounded-2xl border border-[#302d41] bg-[#100d1d] px-3 py-3"
+                  className="flex items-center gap-3 rounded-2xl border border-line bg-background px-3 py-3"
                 >
                   <AvatarImage
                     avatar={player.avatar}
@@ -418,21 +417,21 @@ function Lobby({
                   />
                   <span className="min-w-0 flex-1">
                     <span className="flex flex-wrap items-center gap-2">
-                      <span className="truncate font-semibold text-[#f6f6fa]">
+                      <span className="truncate font-semibold text-foreground">
                         {player.displayName}
                       </span>
                       {player.isHost ? (
-                        <span className="rounded-full bg-[#ffd166]/20 px-1.5 py-0.5 text-[10px] font-bold text-[#ffd166]">
+                        <span className="rounded-full bg-gold/20 px-1.5 py-0.5 text-[10px] font-bold text-gold">
                           HOST
                         </span>
                       ) : null}
                     </span>
-                    <span className="mt-0.5 block text-xs text-[#afadba]">
+                    <span className="mt-0.5 block text-xs text-muted-foreground">
                       {player.ready ? "Ready" : "Not ready yet"}
                     </span>
                   </span>
                   {player.ready ? (
-                    <span className="flex size-6 shrink-0 items-center justify-center rounded-full bg-[#10b981] text-[#100d1d]">
+                    <span className="flex size-6 shrink-0 items-center justify-center rounded-full bg-success-strong text-primary-foreground">
                       <Check aria-hidden className="size-3.5" />
                     </span>
                   ) : null}
@@ -452,16 +451,16 @@ function Lobby({
                   <button
                     type="button"
                     onClick={handleCopyInvite}
-                    className="flex h-full min-h-16 w-full items-center gap-3 rounded-2xl border border-dashed border-[#302d41] bg-[#100d1d]/60 px-3 py-3 text-left"
+                    className="flex h-full min-h-16 w-full items-center gap-3 rounded-2xl border border-dashed border-line bg-background/60 px-3 py-3 text-left"
                   >
-                    <span className="flex size-10 shrink-0 items-center justify-center rounded-full border border-[#302d41] text-[#afadba]">
+                    <span className="flex size-10 shrink-0 items-center justify-center rounded-full border border-line text-muted-foreground">
                       +
                     </span>
                     <span className="min-w-0">
-                      <span className="block text-sm font-semibold text-[#f6f6fa]">
+                      <span className="block text-sm font-semibold text-foreground">
                         Slot #{slot} open
                       </span>
-                      <span className="block text-xs text-[#afadba]">
+                      <span className="block text-xs text-muted-foreground">
                         Tap to invite a friend
                       </span>
                     </span>
@@ -471,19 +470,19 @@ function Lobby({
             </ul>
           </section>
         </div>
-        <section className="rounded-[20px] border border-[#302d41] bg-[#1b1730] p-4 sm:p-5">
+        <section className="rounded-[20px] border border-line bg-surface-2 p-4 sm:p-5">
           <div className="flex items-start justify-between gap-3">
             <div>
-              <h2 className="font-semibold text-[#f6f6fa]">Lobby status</h2>
-              <p className="mt-1 text-sm text-[#afadba]">
+              <h2 className="font-semibold text-foreground">Lobby status</h2>
+              <p className="mt-1 text-sm text-muted-foreground">
                 {joined} of {view.maxPlayers} players connected
               </p>
             </div>
             <p
               className={`rounded-full px-3 py-1 text-xs font-semibold ${
                 readyCount === joined && canStart
-                  ? "bg-[#10b981] text-[#100d1d]"
-                  : "bg-[#302d41] text-[#afadba]"
+                  ? "bg-success-strong text-primary-foreground"
+                  : "bg-muted text-muted-foreground"
               }`}
             >
               {readyCount === joined && canStart
@@ -492,14 +491,14 @@ function Lobby({
             </p>
           </div>
           <div className="mt-5">
-            <div className="flex items-center justify-between text-xs text-[#afadba]">
+            <div className="flex items-center justify-between text-xs text-muted-foreground">
               <span>Joined slots</span>
               <span>
                 {joined}/{view.maxPlayers} max
               </span>
             </div>
             <div
-              className="mt-2 h-2 overflow-hidden rounded-full bg-[#302d41]"
+              className="mt-2 h-2 overflow-hidden rounded-full bg-muted"
               role="progressbar"
               aria-valuenow={joined}
               aria-valuemin={0}
@@ -507,11 +506,11 @@ function Lobby({
               aria-label={`${joined} of ${view.maxPlayers} seats filled, ${seatsLeft} left`}
             >
               <div
-                className="h-full rounded-full bg-linear-to-r from-[#9b7bff] to-[#d8ccff]"
+                className="h-full rounded-full bg-linear-to-r from-primary to-[#d8ccff]"
                 style={{ width: `${fill}%` }}
               />
             </div>
-            <p className="mt-2 text-sm text-[#f6f6fa]">
+            <p className="mt-2 text-sm text-foreground">
               {seatsLeft === 0
                 ? "No seats left."
                 : `${seatsLeft} ${seatsLeft === 1 ? "seat" : "seats"} left`}
@@ -523,8 +522,8 @@ function Lobby({
             </div>
           ) : null}
           {view.youAreGuest ? (
-            <details className="mt-4 rounded-xl bg-[#100d1d] px-3 py-3 text-sm text-[#afadba]">
-              <summary className="cursor-pointer text-[#f6f6fa]">
+            <details className="mt-4 rounded-xl bg-background px-3 py-3 text-sm text-muted-foreground">
+              <summary className="cursor-pointer text-foreground">
                 Keep this name and host next time
               </summary>
               <ClaimAccountForm
@@ -533,17 +532,14 @@ function Lobby({
               />
             </details>
           ) : null}
-          <div className="mt-4">
-            <PlayerPrompts view={view} />
-          </div>
           {view.youAreHost ? (
-            <p className="mt-4 flex gap-2 rounded-xl bg-[#100d1d] px-3 py-3 text-sm text-[#afadba]">
+            <p className="mt-4 flex gap-2 rounded-xl bg-background px-3 py-3 text-sm text-muted-foreground">
               <Crown
                 aria-hidden
-                className="mt-0.5 size-4 shrink-0 text-[#ffd166]"
+                className="mt-0.5 size-4 shrink-0 text-gold"
               />
               <span>
-                <span className="font-semibold text-[#f6f6fa]">
+                <span className="font-semibold text-foreground">
                   You are the room host.{" "}
                 </span>
                 At least 2 players are needed. When everyone is in and ready,
@@ -553,12 +549,12 @@ function Lobby({
           ) : null}
         </section>
       </div>
-      <div className="sticky bottom-3 z-30 flex flex-col gap-2 rounded-2xl border border-[#302d41] bg-[#1b1730]/90 p-2.5 shadow-[0_12px_40px_rgba(0,0,0,0.45)] backdrop-blur sm:flex-row sm:items-center sm:justify-between sm:gap-3 sm:p-3">
+      <div className="sticky bottom-3 z-30 flex flex-col gap-2 rounded-2xl border border-line bg-surface-2/90 p-2.5 shadow-[0_12px_40px_rgba(0,0,0,0.45)] backdrop-blur sm:flex-row sm:items-center sm:justify-between sm:gap-3 sm:p-3">
         <p className="hidden px-2 text-sm sm:block">
-          <span className="block font-semibold text-[#f6f6fa]">
+          <span className="block font-semibold text-foreground">
             {view.name}
           </span>
-          <span className="text-[#afadba]">
+          <span className="text-muted-foreground">
             {canStart
               ? `${readyCount}/${joined} ready. ${view.youAreHost ? "Start when you like." : "Waiting for the host."}`
               : "Waiting for at least 2 players."}
@@ -566,7 +562,7 @@ function Lobby({
         </p>
         <div className="flex gap-2">
           <form action={leaveAction.bind(null, view.code)}>
-            <button className="h-11 rounded-xl border border-[#302d41] px-3 text-sm text-[#f6f6fa] sm:px-4">
+            <button className="h-11 rounded-xl border border-line px-3 text-sm text-foreground sm:px-4">
               Leave
             </button>
           </form>
@@ -577,8 +573,8 @@ function Lobby({
             <button
               className={`flex h-11 w-full items-center justify-center gap-2 rounded-xl border px-3 text-sm font-semibold sm:w-auto sm:px-4 ${
                 you?.ready
-                  ? "border-[#10b981] text-[#34d399]"
-                  : "border-[#302d41] text-[#f6f6fa]"
+                  ? "border-success-strong text-success"
+                  : "border-line text-foreground"
               }`}
             >
               {you?.ready ? <Check aria-hidden className="size-4" /> : null}
@@ -592,7 +588,7 @@ function Lobby({
             >
               <button
                 disabled={!canStart}
-                className="h-11 w-full rounded-xl bg-[#9b7bff] px-5 font-semibold text-[#100d1d] disabled:opacity-50 sm:w-auto"
+                className="h-11 w-full rounded-xl bg-primary px-5 font-semibold text-primary-foreground disabled:opacity-50 sm:w-auto"
               >
                 Start game
               </button>
@@ -603,7 +599,7 @@ function Lobby({
       {notice ? (
         <p
           role="status"
-          className="fixed bottom-6 left-1/2 z-50 -translate-x-1/2 rounded-lg border border-[#302d41] bg-[#1b1730] px-4 py-3 text-sm text-[#f6f6fa] shadow-sm"
+          className="fixed bottom-6 left-1/2 z-50 -translate-x-1/2 rounded-lg border border-line bg-surface-2 px-4 py-3 text-sm text-foreground shadow-sm"
         >
           {notice.text}
         </p>
@@ -624,18 +620,18 @@ function Answering({
   const act = useRoomAction(view.code)
   return (
     <div className="grid gap-4">
-      <section className="overflow-hidden rounded-[24px] border border-[#302d41] bg-[#161222]">
+      <section className="overflow-hidden rounded-[24px] border border-line bg-surface">
         <div
           aria-hidden
-          className="h-1 bg-linear-to-r from-[#ff6b8a] via-[#c4b5fd] to-[#ffd166]"
+          className="h-1 bg-linear-to-r from-twist via-brand-soft to-gold"
         />
         <div className="p-4 sm:p-5">
           <div className="flex items-center justify-between gap-3">
-            <span className="inline-flex items-center gap-1 rounded-full bg-[#ff6b8a]/15 px-2.5 py-1 text-xs font-semibold text-[#ff8fab]">
+            <span className="inline-flex items-center gap-1 rounded-full bg-twist/15 px-2.5 py-1 text-xs font-semibold text-twist-soft">
               <Flame className="size-3.5" aria-hidden />
               {view.askedBy ? `${view.askedBy} asks` : view.categoryName}
             </span>
-            <span className="inline-flex items-center gap-1 text-xs text-[#9c98ad]">
+            <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
               <Lock className="size-3.5" aria-hidden />
               Secret submission
             </span>
@@ -644,7 +640,7 @@ function Answering({
             {view.question}
           </h2>
           {view.isReplay ? (
-            <p className="mt-2 text-xs font-semibold text-[#ffd166]">
+            <p className="mt-2 text-xs font-semibold text-gold">
               Replay · this group has heard this prompt
             </p>
           ) : null}
@@ -652,13 +648,13 @@ function Answering({
             <PointChips />
             {clock}
           </div>
-          <p className="mt-3 text-sm text-[#9c98ad]">
+          <p className="mt-3 text-sm text-muted-foreground">
             Disguise your style. Every friend you fool pays you.
           </p>
         </div>
       </section>
       {view.yourAnswer ? (
-        <p className="rounded-[16px] border border-[#302d41] bg-[#161222] px-4 py-3 text-sm text-[#d8d6e3]">
+        <p className="rounded-[16px] border border-line bg-surface px-4 py-3 text-sm text-soft-foreground">
           Locked in. Your answer stays hidden until the reveal.
         </p>
       ) : (
@@ -673,7 +669,7 @@ function Answering({
         title="Lobby status"
         detail={`${view.submittedCount}/${view.expectedAnswers} locked in`}
       />
-      <p className="text-center text-sm text-[#9c98ad]">
+      <p className="text-center text-sm text-muted-foreground">
         Voting opens when the timer ends or everyone locks an answer in.
       </p>
       {view.youAreHost ? (
@@ -701,10 +697,10 @@ function Guessing({ view, clock }: { view: RoomView; clock: ReactNode }) {
   const allVoted = view.answers.length > 0 && votedCount === view.answers.length
   return (
     <div className="grid gap-4">
-      <section className="sticky top-2 z-20 rounded-[20px] border border-[#3a3458] bg-[#161222]/95 p-4 shadow-[0_12px_40px_rgba(0,0,0,0.45)] backdrop-blur">
+      <section className="sticky top-2 z-20 rounded-[20px] border border-line bg-surface/95 p-4 shadow-[0_12px_40px_rgba(0,0,0,0.45)] backdrop-blur">
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
-            <p className="text-xs font-semibold tracking-[0.14em] text-[#9b7bff] uppercase">
+            <p className="text-xs font-semibold tracking-[0.14em] text-primary uppercase">
               {view.categoryName}
             </p>
             <h2 className="mt-1 font-display text-base leading-snug font-bold wrap-break-word sm:text-xl">
@@ -717,8 +713,8 @@ function Guessing({ view, clock }: { view: RoomView; clock: ReactNode }) {
           <span
             className={`rounded-full px-2.5 py-1 text-xs font-semibold ${
               allVoted
-                ? "bg-[#10b981]/15 text-[#34d399]"
-                : "bg-[#9b7bff]/15 text-[#d8c7ff]"
+                ? "bg-success-strong/15 text-success"
+                : "bg-primary/15 text-brand-soft"
             }`}
           >
             {view.answers.length === 0
@@ -733,7 +729,7 @@ function Guessing({ view, clock }: { view: RoomView; clock: ReactNode }) {
         </div>
       </section>
       {view.answers.length === 0 ? (
-        <p className="rounded-[16px] border border-[#302d41] bg-[#161222] px-4 py-3 text-sm text-[#d8d6e3]">
+        <p className="rounded-[16px] border border-line bg-surface px-4 py-3 text-sm text-soft-foreground">
           Your own answer stays hidden. Other answers show up here for you to
           name.
         </p>
@@ -744,28 +740,28 @@ function Guessing({ view, clock }: { view: RoomView; clock: ReactNode }) {
         return (
           <article
             key={answer.id}
-            className="overflow-hidden rounded-[24px] border border-[#3a3458] bg-[#161222]"
+            className="overflow-hidden rounded-[24px] border border-line bg-surface"
           >
-            <div className="flex items-center justify-between gap-3 border-b border-white/5 px-4 py-3 text-xs text-[#9c98ad]">
+            <div className="flex items-center justify-between gap-3 border-b border-white/5 px-4 py-3 text-xs text-muted-foreground">
               <span>
                 Answer {index + 1} of {view.answers.length}
               </span>
               {answer.yourGuessId ? (
-                <span className="inline-flex items-center gap-1 font-semibold text-[#34d399]">
+                <span className="inline-flex items-center gap-1 font-semibold text-success">
                   <Check className="size-3.5" aria-hidden />
                   Voted
                 </span>
               ) : null}
             </div>
             <div className="p-4 sm:p-5">
-              <blockquote className="rounded-2xl bg-[#100d1d] px-4 py-5 text-center text-lg leading-7 wrap-break-word text-[#f6f6fa]">
+              <blockquote className="rounded-2xl bg-background px-4 py-5 text-center text-lg leading-7 wrap-break-word text-foreground">
                 “{answer.text}”
               </blockquote>
             </div>
             <div className="border-t border-white/5 p-4 sm:p-5">
               <div className="flex items-center justify-between gap-3">
                 <h3 className="font-semibold">Who wrote this answer?</h3>
-                <span className="text-xs text-[#9c98ad]">
+                <span className="text-xs text-muted-foreground">
                   {picked ? "1 selected" : "Pick 1"}
                 </span>
               </div>
@@ -780,8 +776,8 @@ function Guessing({ view, clock }: { view: RoomView; clock: ReactNode }) {
                       aria-pressed={active}
                       className={`flex min-h-16 items-center gap-3 rounded-2xl border px-3 py-2 text-left ${
                         active
-                          ? "border-[#9b7bff] bg-[#9b7bff]/10"
-                          : "border-[#302d41] bg-[#120f1c]"
+                          ? "border-primary bg-primary/10"
+                          : "border-line bg-background"
                       }`}
                     >
                       <AvatarImage
@@ -795,8 +791,8 @@ function Guessing({ view, clock }: { view: RoomView; clock: ReactNode }) {
                       <span
                         className={`flex size-5 items-center justify-center rounded-full border ${
                           active
-                            ? "border-[#9b7bff] bg-[#9b7bff] text-white"
-                            : "border-[#3a3450]"
+                            ? "border-primary bg-primary text-primary-foreground"
+                            : "border-line"
                         }`}
                       >
                         {active ? (
@@ -818,7 +814,7 @@ function Guessing({ view, clock }: { view: RoomView; clock: ReactNode }) {
           </article>
         )
       })}
-      <p className="text-center text-xs text-[#9c98ad]">
+      <p className="text-center text-xs text-muted-foreground">
         The writer’s name stays hidden until everyone has guessed or the timer
         ends.
       </p>
@@ -835,8 +831,8 @@ function Reveal({ view }: { view: RoomView }) {
   const act = useRoomAction(view.code)
   return (
     <div className="grid gap-4">
-      <section className="rounded-[20px] border border-[#302d41] bg-[#161222] p-4 sm:p-5">
-        <p className="text-xs font-semibold tracking-[0.14em] text-[#9b7bff] uppercase">
+      <section className="rounded-[20px] border border-line bg-surface p-4 sm:p-5">
+        <p className="text-xs font-semibold tracking-[0.14em] text-primary uppercase">
           Round {view.currentRound} of {view.totalRounds} · the reveal
         </p>
         <h2 className="mt-1 font-display text-lg leading-snug font-bold wrap-break-word sm:text-xl">
@@ -855,32 +851,32 @@ function Reveal({ view }: { view: RoomView }) {
         return (
           <article
             key={answer.id}
-            className="overflow-hidden rounded-[24px] border border-[#3a3458] bg-[#161222]"
+            className="overflow-hidden rounded-[24px] border border-line bg-surface"
           >
-            <blockquote className="px-4 pt-5 pb-4 text-center text-lg leading-7 wrap-break-word text-[#f6f6fa] sm:px-6">
+            <blockquote className="px-4 pt-5 pb-4 text-center text-lg leading-7 wrap-break-word text-foreground sm:px-6">
               “{answer.text}”
             </blockquote>
-            <div className="flex items-center gap-3 border-t border-white/5 bg-[#9b7bff]/5 px-4 py-4 sm:px-6">
+            <div className="flex items-center gap-3 border-t border-white/5 bg-primary/5 px-4 py-4 sm:px-6">
               <AvatarImage
                 avatar={author?.avatar ?? "cipher"}
                 alt=""
-                className="size-14 ring-2 ring-[#9b7bff]/60"
+                className="size-14 ring-2 ring-primary/60"
               />
               <div className="min-w-0 flex-1">
-                <p className="text-[11px] font-semibold tracking-[0.14em] text-[#c4b5fd] uppercase">
+                <p className="text-[11px] font-semibold tracking-[0.14em] text-brand-soft uppercase">
                   Written by
                 </p>
                 <p className="truncate font-display text-xl font-bold">
                   {answer.author?.displayName ?? "Unknown"}
                   {isYourAnswer ? " (You)" : ""}
                 </p>
-                <p className="text-xs text-[#9c98ad]">
+                <p className="text-xs text-muted-foreground">
                   Fooled {missed.length} of {votes.length}{" "}
                   {votes.length === 1 ? "voter" : "voters"}
                 </p>
               </div>
               {(answer.bluffPoints ?? 0) > 0 ? (
-                <span className="shrink-0 rounded-full bg-[#ff6b8a]/15 px-3 py-1 text-sm font-semibold text-[#ff8fab]">
+                <span className="shrink-0 rounded-full bg-twist/15 px-3 py-1 text-sm font-semibold text-twist-soft">
                   +{answer.bluffPoints} bluff
                 </span>
               ) : null}
@@ -890,8 +886,8 @@ function Reveal({ view }: { view: RoomView }) {
                 <p
                   className={`rounded-xl px-3 py-2 text-sm font-semibold ${
                     yours.correct
-                      ? "bg-[#10b981]/15 text-[#34d399]"
-                      : "bg-[#ff6b8a]/10 text-[#ff8fab]"
+                      ? "bg-success-strong/15 text-success"
+                      : "bg-twist/10 text-twist-soft"
                   }`}
                 >
                   {yours.correct
@@ -901,8 +897,8 @@ function Reveal({ view }: { view: RoomView }) {
               ) : null}
               <VoteChips label="Got it" votes={correct} tone="correct" />
               <VoteChips label="Fooled" votes={missed} tone="fooled" />
-              <details className="group text-xs text-[#9c98ad]">
-                <summary className="cursor-pointer list-none hover:text-[#f6f6fa]">
+              <details className="group text-xs text-muted-foreground">
+                <summary className="cursor-pointer list-none hover:text-foreground">
                   Report this answer
                 </summary>
                 <ReportForm code={view.code} answerId={answer.id} />
@@ -920,15 +916,15 @@ function Reveal({ view }: { view: RoomView }) {
               <button
                 className={`inline-flex min-h-11 items-center gap-1.5 rounded-full border px-3.5 text-lg transition-transform active:scale-90 ${
                   count > 0
-                    ? "border-[#9b7bff]/50 bg-[#9b7bff]/10"
-                    : "border-[#302d41] bg-[#161222]"
+                    ? "border-primary/50 bg-primary/10"
+                    : "border-line bg-surface"
                 }`}
                 type="submit"
                 aria-label={`React ${emoji}, ${count} so far`}
               >
                 {emoji}
                 {count > 0 ? (
-                  <span className="text-xs font-semibold text-[#d8c7ff] tabular-nums">
+                  <span className="text-xs font-semibold text-brand-soft tabular-nums">
                     {count}
                   </span>
                 ) : null}
@@ -939,14 +935,14 @@ function Reveal({ view }: { view: RoomView }) {
       </div>
       {view.youAreHost ? (
         <form action={act(nextRoundAction, view.code)}>
-          <button className="h-12 w-full rounded-2xl bg-[#9b7bff] px-4 font-semibold text-white">
+          <button className="h-12 w-full rounded-2xl bg-primary px-4 font-semibold text-primary-foreground">
             {view.currentRound >= view.totalRounds
               ? "Show final results"
               : `Next round (${view.currentRound}/${view.totalRounds})`}
           </button>
         </form>
       ) : (
-        <p className="text-center text-sm text-[#9c98ad]">
+        <p className="text-center text-sm text-muted-foreground">
           Waiting for the host to continue.
         </p>
       )}
@@ -977,13 +973,13 @@ function Results({ view }: { view: RoomView }) {
   return (
     <div className="grid gap-4">
       <header className="text-center">
-        <p className="text-xs font-semibold tracking-[0.16em] text-[#ffd166] uppercase">
+        <p className="text-xs font-semibold tracking-[0.16em] text-gold uppercase">
           Match concluded · {view.currentRound} of {view.totalRounds} rounds
         </p>
         <h2 className="mt-2 font-display text-3xl font-bold">
           Championship podium
         </h2>
-        <p className="mt-1 text-sm text-[#9c98ad]">
+        <p className="mt-1 text-sm text-muted-foreground">
           The answers are out. Here are the standings.
         </p>
       </header>
@@ -997,25 +993,25 @@ function Results({ view }: { view: RoomView }) {
               key={row.playerId}
               className={`rounded-[20px] border px-2 py-4 text-center ${
                 first
-                  ? "border-[#9b7bff] bg-[#9b7bff]/10"
-                  : "border-[#302d41] bg-[#161222]"
+                  ? "border-primary bg-primary/10"
+                  : "border-line bg-surface"
               }`}
             >
               {first ? (
-                <Crown className="mx-auto size-5 text-[#ffd166]" aria-hidden />
+                <Crown className="mx-auto size-5 text-gold" aria-hidden />
               ) : null}
               <AvatarImage
                 avatar={row.avatar}
                 alt=""
                 className={`mx-auto ${first ? "size-16" : "size-12"}`}
               />
-              <p className="mt-2 text-xs font-semibold text-[#ffd166]">
+              <p className="mt-2 text-xs font-semibold text-gold">
                 {place === 1 ? "1st" : place === 2 ? "2nd" : "3rd"}
               </p>
               <p className="truncate text-sm font-semibold">
                 {row.displayName}
               </p>
-              <p className="text-xs text-[#9c98ad]">{row.score} pts</p>
+              <p className="text-xs text-muted-foreground">{row.score} pts</p>
             </div>
           )
         })}
@@ -1025,9 +1021,9 @@ function Results({ view }: { view: RoomView }) {
         {board.map((row, index) => (
           <li
             key={row.playerId}
-            className="flex items-center gap-3 rounded-2xl border border-[#302d41] bg-[#161222] px-3 py-3"
+            className="flex items-center gap-3 rounded-2xl border border-line bg-surface px-3 py-3"
           >
-            <span className="w-5 text-center text-sm font-semibold text-[#9c98ad]">
+            <span className="w-5 text-center text-sm font-semibold text-muted-foreground">
               {index + 1}
             </span>
             <AvatarImage avatar={row.avatar} alt="" className="size-10" />
@@ -1036,7 +1032,7 @@ function Results({ view }: { view: RoomView }) {
                 {row.displayName}
                 {row.playerId === view.yourPlayerId ? " (You)" : ""}
               </span>
-              <span className="block text-xs text-[#9c98ad]">
+              <span className="block text-xs text-muted-foreground">
                 {row.accuracy}% accuracy · {row.correctGuesses} correct · fooled{" "}
                 {row.fooled}
               </span>
@@ -1045,15 +1041,15 @@ function Results({ view }: { view: RoomView }) {
           </li>
         ))}
       </ol>
-      <p className="text-center font-mono text-xs text-[#9c98ad]">
+      <p className="text-center font-mono text-xs text-muted-foreground">
         {formatRoomCode(view.code)}
       </p>
       {view.youAreGuest ? (
-        <div className="rounded-xl border border-[#302d41] bg-[#100d1d] p-4">
-          <h3 className="font-semibold text-[#f6f6fa]">
+        <div className="rounded-xl border border-line bg-background p-4">
+          <h3 className="font-semibold text-foreground">
             Keep this name and host next time
           </h3>
-          <p className="mt-1 text-sm text-[#afadba]">
+          <p className="mt-1 text-sm text-muted-foreground">
             Save {view.yourDisplayName} on an account. Your score in this room
             stays with you.
           </p>
@@ -1066,7 +1062,7 @@ function Results({ view }: { view: RoomView }) {
       <div className="grid gap-2">
         {view.youAreHost && view.status === "COMPLETED" ? (
           <form action={rematchAction.bind(null, view.code)}>
-            <button className="h-12 w-full rounded-2xl bg-[#9b7bff] font-semibold text-white">
+            <button className="h-12 w-full rounded-2xl bg-primary font-semibold text-primary-foreground">
               Play again
             </button>
           </form>
@@ -1075,14 +1071,14 @@ function Results({ view }: { view: RoomView }) {
           <button
             type="button"
             onClick={() => void handleShare()}
-            className="inline-flex h-11 items-center justify-center gap-2 rounded-2xl border border-[#302d41] text-sm"
+            className="inline-flex h-11 items-center justify-center gap-2 rounded-2xl border border-line text-sm"
           >
             <Share2 className="size-4" aria-hidden />
             {copied ? "Copied" : "Share podium"}
           </button>
           <Link
             href="/"
-            className="inline-flex h-11 items-center justify-center gap-2 rounded-2xl border border-[#302d41] text-sm"
+            className="inline-flex h-11 items-center justify-center gap-2 rounded-2xl border border-line text-sm"
           >
             <Home className="size-4" aria-hidden />
             Return home
@@ -1139,7 +1135,7 @@ function AnswerForm({
     <form action={action} className="grid gap-3">
       <Notice state={state} />
       <input type="hidden" name="code" value={code} />
-      <div className="flex items-center justify-between gap-3 text-xs font-semibold tracking-[0.12em] text-[#9c98ad] uppercase">
+      <div className="flex items-center justify-between gap-3 text-xs font-semibold tracking-[0.12em] text-muted-foreground uppercase">
         <span>Your secret answer</span>
         <span className="tracking-normal normal-case">
           {Math.max(0, ANSWER_MAX_LENGTH - answer.length)} left
@@ -1155,12 +1151,12 @@ function AnswerForm({
           answerDrafts.set(draftKey, event.target.value)
           setAnswer(event.target.value)
         }}
-        className="rounded-[16px] border border-[#302d41] bg-[#100d1d] p-3 text-[#f6f6fa] outline-none placeholder:text-[#afadba] focus:border-[#9b7bff]"
+        className="rounded-[16px] border border-line bg-background p-3 text-foreground outline-none placeholder:text-muted-foreground focus:border-primary"
         placeholder="Write your secret answer"
       />
       <button
         disabled={pending}
-        className="inline-flex h-12 items-center justify-center gap-2 rounded-2xl bg-[#9b7bff] font-semibold text-white disabled:opacity-60"
+        className="inline-flex h-12 items-center justify-center gap-2 rounded-2xl bg-primary font-semibold text-primary-foreground disabled:opacity-60"
       >
         <Lock className="size-4" aria-hidden />
         {pending ? "Locking in…" : "Lock in secret answer"}
@@ -1200,7 +1196,7 @@ function GuessForm({
       <input type="hidden" name="guessedPlayerId" value={guessedPlayerId} />
       <button
         disabled={pending || locked || !guessedPlayerId}
-        className="inline-flex h-12 w-full items-center justify-center gap-2 rounded-2xl bg-[#9b7bff] font-semibold text-white disabled:opacity-50"
+        className="inline-flex h-12 w-full items-center justify-center gap-2 rounded-2xl bg-primary font-semibold text-primary-foreground disabled:opacity-50"
       >
         <Lock className="size-4" aria-hidden />
         {pending ? "Locking in…" : label}
@@ -1221,7 +1217,7 @@ function ReportForm({ code, answerId }: { code: string; answerId: string }) {
         minLength={4}
         maxLength={500}
         placeholder="What is wrong with this answer?"
-        className="h-11 w-full min-w-0 rounded-lg border border-[#302d41] bg-[#100d1d] px-3 text-sm text-[#f6f6fa] placeholder:text-[#afadba] sm:flex-1"
+        className="h-11 w-full min-w-0 rounded-lg border border-line bg-background px-3 text-sm text-foreground placeholder:text-muted-foreground sm:flex-1"
       />
       <button
         disabled={pending}
@@ -1256,11 +1252,11 @@ function VoteChips({
   if (votes.length === 0) return null
   const chip =
     tone === "correct"
-      ? "border-[#10b981]/30 bg-[#10b981]/10 text-[#34d399]"
-      : "border-[#ff6b8a]/25 bg-[#ff6b8a]/10 text-[#ff8fab]"
+      ? "border-success-strong/30 bg-success-strong/10 text-success"
+      : "border-twist/25 bg-twist/10 text-twist-soft"
   return (
     <div className="flex flex-wrap items-center gap-1.5">
-      <span className="mr-1 text-xs font-semibold text-[#9c98ad]">{label}</span>
+      <span className="mr-1 text-xs font-semibold text-muted-foreground">{label}</span>
       {votes.map((vote) => (
         <span
           key={`${vote.displayName}-${vote.guessedName}`}
@@ -1289,7 +1285,7 @@ function MatchAwards({ board }: { board: RoomView["leaderboard"] }) {
           title: "Mind Reader",
           who: reader,
           detail: `${reader.correctGuesses} correct guesses`,
-          tone: "text-[#34d399]",
+          tone: "text-success",
         }
       : null,
     disguise
@@ -1297,7 +1293,7 @@ function MatchAwards({ board }: { board: RoomView["leaderboard"] }) {
           title: "Master of Disguise",
           who: disguise,
           detail: `fooled ${disguise.fooled} ${disguise.fooled === 1 ? "friend" : "friends"}`,
-          tone: "text-[#ff8fab]",
+          tone: "text-twist-soft",
         }
       : null,
   ].filter((award) => award !== null)
@@ -1306,7 +1302,7 @@ function MatchAwards({ board }: { board: RoomView["leaderboard"] }) {
       {awards.map((award) => (
         <div
           key={award.title}
-          className="flex items-center gap-3 rounded-2xl border border-[#302d41] bg-[#161222] px-3 py-3"
+          className="flex items-center gap-3 rounded-2xl border border-line bg-surface px-3 py-3"
         >
           <AvatarImage avatar={award.who.avatar} alt="" className="size-10" />
           <div className="min-w-0">
@@ -1316,7 +1312,7 @@ function MatchAwards({ board }: { board: RoomView["leaderboard"] }) {
               {award.title}
             </p>
             <p className="truncate font-semibold">{award.who.displayName}</p>
-            <p className="text-xs text-[#9c98ad]">{award.detail}</p>
+            <p className="text-xs text-muted-foreground">{award.detail}</p>
           </div>
         </div>
       ))}
@@ -1327,10 +1323,10 @@ function MatchAwards({ board }: { board: RoomView["leaderboard"] }) {
 function PointChips() {
   return (
     <div className="flex flex-wrap gap-1.5 text-xs font-semibold">
-      <span className="rounded-full bg-[#ffd166]/15 px-2.5 py-1 text-[#ffd166]">
+      <span className="rounded-full bg-gold/15 px-2.5 py-1 text-gold">
         +{CORRECT_GUESS_POINTS} correct guess
       </span>
-      <span className="rounded-full bg-[#ff6b8a]/15 px-2.5 py-1 text-[#ff8fab]">
+      <span className="rounded-full bg-twist/15 px-2.5 py-1 text-twist-soft">
         +{BLUFF_POINTS} per friend fooled
       </span>
     </div>
@@ -1347,10 +1343,10 @@ function SeatRow({
   detail: string
 }) {
   return (
-    <section className="rounded-[24px] border border-[#302d41] bg-[#161222] p-4">
+    <section className="rounded-[24px] border border-line bg-surface p-4">
       <div className="flex items-center justify-between gap-3">
         <h3 className="text-sm font-semibold">{title}</h3>
-        <span className="rounded-full bg-white/5 px-2.5 py-1 text-xs text-[#d8d6e3]">
+        <span className="rounded-full bg-white/5 px-2.5 py-1 text-xs text-soft-foreground">
           {detail}
         </span>
       </div>
@@ -1360,12 +1356,12 @@ function SeatRow({
             <span className="relative mx-auto block w-fit">
               <AvatarImage avatar={player.avatar} alt="" className="size-12" />
               {player.lockedIn ? (
-                <span className="absolute -right-1 -bottom-1 flex size-5 items-center justify-center rounded-full bg-[#34d399] text-[#10281f]">
+                <span className="absolute -right-1 -bottom-1 flex size-5 items-center justify-center rounded-full bg-success text-[#10281f]">
                   <Check className="size-3" aria-hidden />
                 </span>
               ) : null}
             </span>
-            <span className="mt-2 block truncate text-xs text-[#d8d6e3]">
+            <span className="mt-2 block truncate text-xs text-soft-foreground">
               {player.isYou
                 ? `${player.displayName} (You)`
                 : player.displayName}
@@ -1380,13 +1376,13 @@ function SeatRow({
 function ManagePlayers({ view }: { view: RoomView }) {
   const act = useRoomAction(view.code)
   return (
-    <aside className="rounded-[20px] border border-[#302d41] bg-[#1b1730] p-4">
+    <aside className="rounded-[20px] border border-line bg-surface-2 p-4">
       <h2 className="font-semibold">Manage players</h2>
       <ul className="mt-3 grid gap-2">
         {view.players.map((player) => (
           <li
             key={player.id}
-            className="flex items-center gap-2 rounded-xl bg-[#100d1d] px-3 py-2 text-sm"
+            className="flex items-center gap-2 rounded-xl bg-background px-3 py-2 text-sm"
           >
             <AvatarImage
               avatar={player.avatar}
@@ -1394,20 +1390,20 @@ function ManagePlayers({ view }: { view: RoomView }) {
               className="size-8 shrink-0"
             />
             <span className="min-w-0 flex-1 wrap-break-word">
-              <span className="block text-[#f6f6fa]">{player.displayName}</span>
+              <span className="block text-foreground">{player.displayName}</span>
               <span className="mt-1 flex flex-wrap gap-1">
                 {player.isHost ? (
-                  <span className="rounded-full bg-[#ffd166]/15 px-2 py-0.5 text-[10px] font-semibold text-[#ffd166]">
+                  <span className="rounded-full bg-gold/15 px-2 py-0.5 text-[10px] font-semibold text-gold">
                     HOST
                   </span>
                 ) : null}
                 {player.isYou ? (
-                  <span className="rounded-full bg-[#9b7bff]/15 px-2 py-0.5 text-[10px] font-semibold text-[#9b7bff]">
+                  <span className="rounded-full bg-primary/15 px-2 py-0.5 text-[10px] font-semibold text-primary">
                     YOU
                   </span>
                 ) : null}
                 {player.ready ? (
-                  <span className="rounded-full bg-[#10b981]/15 px-2 py-0.5 text-[10px] font-semibold text-[#10b981]">
+                  <span className="rounded-full bg-success-strong/15 px-2 py-0.5 text-[10px] font-semibold text-success-strong">
                     READY
                   </span>
                 ) : null}

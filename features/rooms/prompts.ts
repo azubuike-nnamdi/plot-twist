@@ -1,23 +1,15 @@
-export const PROMPT_MIN_LENGTH = 8
-export const PROMPT_MAX_LENGTH = 160
+// Rounds deal pack questions only. Staff own the question bank (seed packs,
+// manual entry, and Ollama drafts in /admin/questions); players cannot add questions.
 
-export type DrawnPrompt =
-  | { kind: "player"; id: string }
-  | { kind: "pack"; id: string; isReplay: boolean }
+export type DrawnPrompt = { kind: "pack"; id: string; isReplay: boolean }
 
 export function choosePrompt(
   input: {
-    playerPromptIds: string[]
     unseenPackIds: string[]
     seenPackIds: string[]
   },
   randomIndex: (length: number) => number
 ): DrawnPrompt | null {
-  if (input.playerPromptIds.length > 0) {
-    const index = randomIndex(input.playerPromptIds.length)
-    const id = input.playerPromptIds[index]
-    return id ? { kind: "player", id } : null
-  }
   if (input.unseenPackIds.length > 0) {
     const index = randomIndex(input.unseenPackIds.length)
     const id = input.unseenPackIds[index]
@@ -29,8 +21,4 @@ export function choosePrompt(
     return id ? { kind: "pack", id, isReplay: true } : null
   }
   return null
-}
-
-export function normalizePrompt(text: string) {
-  return text.trim().replace(/\s+/g, " ")
 }

@@ -20,8 +20,6 @@ import {
   startGame,
   submitAnswer,
   submitGuess,
-  submitRoomPrompt,
-  reviewRoomPrompt,
 } from "@/features/rooms/engine"
 import { auth } from "@/lib/auth/auth"
 import { isUploadAvatar } from "@/lib/avatars"
@@ -290,27 +288,6 @@ export async function reportAction(
   } catch (error) {
     return fail(error)
   }
-}
-
-export async function submitPromptAction(
-  _prev: ActionState,
-  formData: FormData
-): Promise<ActionState> {
-  try {
-    const user = await requireUser()
-    await assertRateLimit(`prompt:${user.id}`, 20, 15 * 60 * 1000)
-    const code = parseRoomCode(String(formData.get("code") ?? ""))
-    await submitRoomPrompt(user.id, code, String(formData.get("prompt") ?? ""))
-    return { success: "Question added to this room." }
-  } catch (error) {
-    return fail(error)
-  }
-}
-
-export async function reviewPromptAction(code: string, promptId: string, decision: "ACCEPTED" | "REMOVED") {
-  const user = await requireUser()
-  const roomCode = parseRoomCode(code)
-  await reviewRoomPrompt({ actorId: user.id, code: roomCode, promptId, decision })
 }
 
 export async function clientIp() {

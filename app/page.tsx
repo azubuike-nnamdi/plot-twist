@@ -13,7 +13,7 @@ const phases = [
     title: "Secret prompt drops",
     body: "Every player gets the same prompt and writes one anonymous answer before the timer ends.",
     note: "20–45 second answer timer",
-    chip: "bg-[#9b7bff]/15 text-[#9b7bff]",
+    chip: "bg-primary/15 text-primary",
   },
   {
     step: "02",
@@ -21,7 +21,7 @@ const phases = [
     title: "Blind guessing",
     body: "Answers are shuffled. Read each one and vote for the author. You cannot vote for yourself.",
     note: "A correct guess is 100 points",
-    chip: "bg-[#ff6b8a]/15 text-[#ff6b8a]",
+    chip: "bg-twist/15 text-twist",
   },
   {
     step: "03",
@@ -29,7 +29,7 @@ const phases = [
     title: "The plot twist",
     body: "Authors are unveiled. Correct guesses earn 100 points, and every player you fooled earns you 50.",
     note: "Then the leaderboard updates",
-    chip: "bg-[#ffd166]/15 text-[#ffd166]",
+    chip: "bg-gold/15 text-gold",
   },
 ]
 
@@ -47,19 +47,19 @@ const features = [
     icon: Monitor,
     title: "No download",
     body: "Open a room in the browser. Share the code TWST-XXXXXXXX or the invite link.",
-    tone: "bg-[#9b7bff]/15 text-[#9b7bff]",
+    tone: "bg-primary/15 text-primary",
   },
   {
     icon: Sparkles,
     title: "Straight scoring",
     body: "A correct guess is worth 100 points. Fool a friend and your answer earns 50 bluff points.",
-    tone: "bg-[#ff6b8a]/15 text-[#ff6b8a]",
+    tone: "bg-twist/15 text-twist",
   },
   {
     icon: Users,
     title: "2 to 16 players",
     body: "Start once at least two players are in the room. Capacity can go up to 16.",
-    tone: "bg-[#ffd166]/15 text-[#ffd166]",
+    tone: "bg-gold/15 text-gold",
   },
 ]
 
@@ -71,15 +71,15 @@ export default function HomePage() {
         <section className="relative overflow-hidden">
           <div
             aria-hidden
-            className="pointer-events-none absolute top-0 left-1/4 size-80 -translate-x-1/2 rounded-full bg-[#9b7bff]/30 blur-3xl"
+            className="pointer-events-none absolute top-0 left-1/4 size-80 -translate-x-1/2 rounded-full bg-primary/30 blur-3xl"
           />
           <div
             aria-hidden
-            className="pointer-events-none absolute top-24 right-0 size-72 rounded-full bg-[#ff6b8a]/25 blur-3xl"
+            className="pointer-events-none absolute top-24 right-0 size-72 rounded-full bg-twist/25 blur-3xl"
           />
           <div className="relative mx-auto grid max-w-6xl items-center gap-10 px-4 py-14 lg:grid-cols-[1.05fr_0.95fr] lg:py-20">
             <div>
-              <p className="inline-flex items-center gap-2 rounded-full border border-border bg-card px-3 py-1 text-xs font-semibold tracking-[0.16em] text-[#9b7bff] uppercase">
+              <p className="inline-flex items-center gap-2 rounded-full border border-border bg-card px-3 py-1 text-xs font-semibold tracking-[0.16em] text-primary uppercase">
                 <span className="size-2 rounded-full bg-[#7b5ad7]" />
                 Social party
               </p>
@@ -94,7 +94,7 @@ export default function HomePage() {
               <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:items-center">
                 <Link
                   href="/create"
-                  className="inline-flex h-14 w-full items-center justify-center rounded-xl bg-[#ff6b8a] px-6 font-semibold text-white sm:w-auto"
+                  className="inline-flex h-14 w-full items-center justify-center rounded-xl bg-primary px-6 font-semibold text-primary-foreground sm:w-auto"
                 >
                   Host a game
                 </Link>
@@ -110,7 +110,7 @@ export default function HomePage() {
 
         <section className="mx-auto max-w-6xl px-4 py-8">
           <div className="text-center">
-            <p className="inline-flex rounded-full bg-[#9b7bff]/15 px-3 py-1 text-xs font-semibold tracking-[0.14em] text-[#9b7bff] uppercase">
+            <p className="inline-flex rounded-full bg-primary/15 px-3 py-1 text-xs font-semibold tracking-[0.14em] text-primary uppercase">
               Simple 3-phase gameplay
             </p>
             <h2 className="font-display mt-4 text-3xl font-bold sm:text-4xl">
@@ -140,7 +140,7 @@ export default function HomePage() {
 
         <section className="mx-auto grid max-w-6xl gap-8 px-4 py-12 lg:grid-cols-[1.05fr_0.95fr]">
           <div>
-            <p className="inline-flex rounded-full bg-[#ff6b8a]/15 px-3 py-1 text-xs font-semibold tracking-[0.14em] text-[#ff6b8a] uppercase">
+            <p className="inline-flex rounded-full bg-twist/15 px-3 py-1 text-xs font-semibold tracking-[0.14em] text-twist uppercase">
               Six prompt packs
             </p>
             <h2 className="font-display mt-4 text-3xl font-bold sm:text-4xl">
@@ -158,7 +158,7 @@ export default function HomePage() {
                 >
                   <div className="flex items-start justify-between gap-3">
                     <h3 className="font-semibold">{title}</h3>
-                    <span className="shrink-0 rounded-full bg-[#9b7bff]/15 px-2 py-1 text-xs font-medium text-[#9b7bff]">
+                    <span className="shrink-0 rounded-full bg-primary/15 px-2 py-1 text-xs font-medium text-primary">
                       {tag}
                     </span>
                   </div>
@@ -189,14 +189,14 @@ export default function HomePage() {
           <div className="relative mx-auto max-w-6xl overflow-hidden rounded-[24px] border border-border bg-card px-6 py-14 text-center">
             <div
               aria-hidden
-              className="pointer-events-none absolute -top-16 left-1/2 size-64 -translate-x-1/2 rounded-full bg-[#9b7bff]/20"
+              className="pointer-events-none absolute -top-16 left-1/2 size-64 -translate-x-1/2 rounded-full bg-primary/20"
             />
             <div
               aria-hidden
-              className="pointer-events-none absolute -right-10 bottom-0 size-48 rounded-full bg-[#ff6b8a]/15"
+              className="pointer-events-none absolute -right-10 bottom-0 size-48 rounded-full bg-twist/15"
             />
             <div className="relative">
-              <p className="inline-flex rounded-full bg-[#9b7bff]/15 px-3 py-1 text-xs font-semibold tracking-[0.14em] text-[#9b7bff] uppercase">
+              <p className="inline-flex rounded-full bg-primary/15 px-3 py-1 text-xs font-semibold tracking-[0.14em] text-primary uppercase">
                 Ready for game night?
               </p>
               <h2 className="font-display mt-4 text-3xl font-bold sm:text-5xl">
@@ -209,30 +209,30 @@ export default function HomePage() {
               <div className="mt-8 grid gap-3 sm:flex sm:flex-wrap sm:items-center sm:justify-center">
                 <Link
                   href="/create"
-                  className="inline-flex h-14 items-center justify-center rounded-xl bg-[#9b7bff] px-6 font-semibold text-[#100d1d]"
+                  className="inline-flex h-14 items-center justify-center rounded-xl bg-primary px-6 font-semibold text-primary-foreground"
                 >
                   Host a game
                 </Link>
                 <Link
                   href="/join"
-                  className="inline-flex h-14 items-center justify-center rounded-xl border border-[#302d41] bg-[#100d1d] px-6 font-semibold"
+                  className="inline-flex h-14 items-center justify-center rounded-xl border border-line bg-background px-6 font-semibold"
                 >
                   Join with a code
                 </Link>
                 <Link
                   href="/how-to-play"
-                  className="inline-flex h-14 items-center justify-center px-4 font-semibold text-[#9b7bff]"
+                  className="inline-flex h-14 items-center justify-center px-4 font-semibold text-primary"
                 >
                   How to play
                 </Link>
               </div>
               <p className="mt-6 text-sm text-muted-foreground">
                 Want to keep your name and avatar?{" "}
-                <Link href="/register" className="font-semibold text-[#9b7bff]">
+                <Link href="/register" className="font-semibold text-primary">
                   Create an account
                 </Link>{" "}
                 or{" "}
-                <Link href="/login" className="font-semibold text-[#9b7bff]">
+                <Link href="/login" className="font-semibold text-primary">
                   sign in
                 </Link>
                 .

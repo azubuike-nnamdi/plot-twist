@@ -8,7 +8,7 @@ import { AvatarPicker } from "@/components/avatars/avatar-picker"
 import { isUploadAvatar } from "@/lib/avatars"
 
 const fieldClass =
-  "h-11 w-full rounded-lg border border-border bg-background px-3 text-sm outline-none focus:border-[#9b7bff]"
+  "h-11 w-full rounded-lg border border-border bg-background px-3 text-sm outline-none focus:border-primary"
 
 function Message({ state }: { state: ActionState }) {
   if (!state?.error) return null
@@ -57,7 +57,7 @@ export function JoinRoomForm({
         <input name="displayName" required minLength={2} maxLength={18} defaultValue={defaultName} className={fieldClass} />
       </label>
       <AvatarPicker value={avatar} choices={choices} onChange={setAvatar} />
-      <button disabled={pending} className="h-11 rounded-lg bg-[#ff6b8a] font-semibold text-white disabled:opacity-60">
+      <button disabled={pending} className="h-11 rounded-lg bg-primary font-semibold text-primary-foreground disabled:opacity-60">
         {pending ? "Joining…" : "Join room"}
       </button>
     </form>

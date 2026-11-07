@@ -6,7 +6,7 @@ A correct guess is worth 100 points to the guesser. Each wrong vote on an answer
 
 ## How a match works
 
-1. **Lobby.** A host creates a room, picks prompt packs, and shares a code such as `TWST-XXXXXXXX` or an invite link. An account is required to host, not to play. Friends join with a name and can save it after the match. While the room is waiting, the host can change rounds, timers, room size, and packs. Each seated player can add one question for this room. A match starts once at least 2 players are in the room.
+1. **Lobby.** A host creates a room, picks prompt packs, and shares a code such as `TWST-XXXXXXXX` or an invite link. An account is required to host, not to play. Friends join with a name and can save it after the match. While the room is waiting, the host can change rounds, timers, room size, and packs. A match starts once at least 2 players are in the room.
 2. **Answers.** Each player submits one answer. Authors stay hidden.
 3. **Guesses.** Answers are shuffled. Players vote for the author of each answer and cannot vote for themselves.
 4. **Reveal.** Authors are shown, scores update, and the host moves to the next round.
@@ -15,17 +15,17 @@ Rooms can run 3, 5, or 8 rounds, with room sizes of 6, 8, 12, or 16. Answer time
 
 ## Questions
 
-Each prompt pack is a list of questions. The card count on a pack is how many of those questions are active. A room deals one question per round.
+Ollama writes every question. There are no hardcoded questions; `pnpm db:seed` only creates the packs.
 
-The room draws in this order:
+Production uses [Ollama Cloud](https://docs.ollama.com/cloud). Set `OLLAMA_API_KEY` (from ollama.com → Settings → Keys) and the app calls `https://ollama.com` with `gpt-oss:120b`. Set `OLLAMA_MODEL` to use another cloud model (`curl https://ollama.com/api/tags` lists them). Without a key, the app expects a local Ollama at `http://127.0.0.1:11434` running `llama3.2`.
 
-1. Questions players added in that lobby. They belong to that room only. With the clean filter on, the host approves them before they can be dealt. The host's own question is ready immediately.
-2. Pack questions nobody currently seated has already heard.
-3. A pack question this group has heard, only after the other piles are empty. That card is labeled Replay.
+- **Every night at 00:00 UTC** Vercel Cron calls `/api/cron/questions`. For each active pack the server asks Ollama for `QUESTIONS_PER_PACK` new questions (30 by default), in calls of 10, with rotating themes so batches differ from night to night.
+- **No manual approval.** Each question must pass an automatic filter before it goes live. It has to be one question ending in `?`, 8 to 160 characters, with no links. It cannot cover self-harm, minors in any romantic or sexual context, slurs, extremism, politics, or religion. Clean packs also block sex, drugs, alcohol, and swearing. Questions that fail are dropped.
+- **No repeats.** A fingerprint of every published question is kept for 90 days, and new drafts that match one are dropped.
+- **24-hour lifetime.** Each batch expires at the next midnight, when the new batch replaces it. A pack whose generation fails or returns fewer than 8 usable questions keeps its current batch, so rooms never run dry. Rounds store their own copy of the question text, so a match in progress at midnight is not affected.
+- **Staff tools** at `/admin/questions`: top up one pack now, run the whole midnight refresh now (do this right after the first deploy), deactivate any question, or write a permanent question by hand.
 
-A pack question is used once inside a match. Play again does not copy the lobby questions, and it holds back pack questions this group has already heard.
-
-Staff manage the bank at `/admin/questions`. Add a question, choose its pack, mark it 18+ when it belongs in the adult pack, or deactivate it so rooms stop drawing it. `pnpm db:seed` loads the starting packs and skips a question whose text is already in that pack. Ollama can draft a batch on that page when `ollama` is running locally. Drafts stay inactive until you publish them, and a round does not wait on a newly generated question.
+A room deals one question per round: first questions nobody seated has heard, and then, only when those run out, a Replay.
 
 ## Live updates
 

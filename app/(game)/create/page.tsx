@@ -11,10 +11,10 @@ export default async function CreateRoomPage() {
   const user = await requirePageUser("/create")
   if (user.isAnonymous) {
     return (
-      <main className="min-h-screen bg-[#0e0b18] text-[#f4f1fb]">
+      <main className="min-h-screen bg-[#0e0b18] text-foreground">
         <div className="mx-auto max-w-xl px-4 py-16">
         <h1 className="font-display text-4xl font-bold">Create an account to host</h1>
-        <p className="mt-3 text-sm text-[#afadba]">
+        <p className="mt-3 text-sm text-muted-foreground">
           Friends can play with a name. Hosting the next room needs an account, and this one keeps the name you already used.
         </p>
         <ClaimAccountForm defaultName={user.name === "Anonymous" ? "" : user.name} />
@@ -28,7 +28,7 @@ export default async function CreateRoomPage() {
     include: { _count: { select: { questions: { where: { isActive: true } } } } },
   })
   return (
-    <main className="min-h-screen bg-[#0e0b18] text-[#f4f1fb]">
+    <main className="min-h-screen bg-[#0e0b18] text-foreground">
       {categories.length === 0 ? (
         <p className="mx-auto max-w-3xl px-4 py-16 text-center">No prompt packs are published yet.</p>
       ) : (

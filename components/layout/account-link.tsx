@@ -42,8 +42,8 @@ export function AccountLink({
       href="/account"
       className={
         compact
-          ? "flex max-w-36 items-center gap-2 text-sm text-[#f6f6fa]"
-          : "flex max-w-52 items-center gap-2 rounded-lg px-3 py-2 text-sm text-[#f6f6fa] hover:bg-white/10"
+          ? "flex max-w-36 items-center gap-2 text-sm text-foreground"
+          : "flex max-w-52 items-center gap-2 rounded-lg px-3 py-2 text-sm text-foreground hover:bg-white/10"
       }
     >
       <AvatarImage avatar={accountAvatar(me.avatar)} alt="" className="size-8 shrink-0" />

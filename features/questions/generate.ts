@@ -1,106 +1,57 @@
 import "server-only"
 
 import { isStaff } from "@/features/auth/permissions"
-import { parseGeneratedQuestions, questionPrompt } from "@/features/questions/ollama"
+import { nextMidnightUtc } from "@/features/questions/batch"
+import { ollamaModel } from "@/features/questions/client"
+import { draftForPack, publishQuestions, refreshDailyQuestions } from "@/features/questions/nightly"
 import { writeAudit } from "@/lib/audit"
 import { prisma } from "@/lib/db/prisma"
-import { env } from "@/lib/env"
 import { AppError } from "@/lib/errors"
 import { assertRateLimit } from "@/lib/security/rate-limit"
 
-const DEFAULT_OLLAMA_URL = "http://127.0.0.1:11434"
-const DEFAULT_OLLAMA_MODEL = "llama3.2"
-const REQUEST_MS = 45_000
-
-type OllamaChatResponse = {
-  message?: { content?: string }
+function assertStaffRole(role: string) {
+  if (!isStaff(role)) throw new AppError("You do not have access to that.", "FORBIDDEN")
 }
 
+/**
+ * Staff top-up for one pack. Questions pass the same automatic safety filter
+ * as the nightly batch, go live right away, and are replaced at midnight.
+ */
 export async function generateQuestions(input: {
   actorRole: string
   actorId: string
   categoryId: string
   count: number
-  isAdult: boolean
 }) {
-  if (!isStaff(input.actorRole)) {
-    throw new AppError("You do not have access to that.", "FORBIDDEN")
-  }
-  if (!Number.isInteger(input.count) || input.count < 1 || input.count > 8) {
-    throw new AppError("Generate between 1 and 8 questions.", "VALIDATION")
+  assertStaffRole(input.actorRole)
+  if (!Number.isInteger(input.count) || input.count < 1 || input.count > 20) {
+    throw new AppError("Generate between 1 and 20 questions.", "VALIDATION")
   }
   await assertRateLimit(`questions:${input.actorId}`, 5, 15 * 60 * 1000)
-  const category = await prisma.category.findUnique({
+  const pack = await prisma.category.findUnique({
     where: { id: input.categoryId },
+    select: { id: true, name: true, description: true, isAdult: true },
   })
-  if (!category) throw new AppError("Choose a category.", "VALIDATION")
-  const existing = await prisma.question.findMany({
-    where: { categoryId: category.id },
-    select: { text: true },
-    orderBy: { createdAt: "desc" },
-    take: 40,
-  })
-  const adult = input.isAdult || category.isAdult
-  const prompt = questionPrompt({
-    categoryName: category.name,
-    description: category.description,
-    count: input.count,
-    adult,
-    avoid: existing.map((question) => question.text),
-  })
-  const content = await requestOllama(prompt)
-  const known = new Set(existing.map((question) => question.text.trim().toLowerCase()))
-  const fresh = parseGeneratedQuestions(content, input.count).filter(
-    (text) => !known.has(text.toLowerCase())
-  )
-  if (fresh.length === 0) {
-    throw new AppError("Ollama did not return any new questions.", "VALIDATION")
+  if (!pack) throw new AppError("Choose a category.", "VALIDATION")
+  const now = new Date()
+  const texts = await draftForPack(pack, input.count, now)
+  if (texts.length === 0) {
+    throw new AppError("Ollama did not return any new questions that passed the filter.", "VALIDATION")
   }
-  await prisma.question.createMany({
-    data: fresh.map((text) => ({
-      text,
-      categoryId: category.id,
-      isAdult: adult,
-      isActive: false,
-    })),
-  })
+  await publishQuestions(pack, texts, nextMidnightUtc(now))
   await writeAudit({
     actorId: input.actorId,
     action: "question.generate",
     targetType: "CATEGORY",
-    targetId: category.id,
-    metadata: { count: fresh.length, model: env.OLLAMA_MODEL || DEFAULT_OLLAMA_MODEL },
+    targetId: pack.id,
+    metadata: { count: texts.length, model: ollamaModel() },
   })
-  return fresh.length
+  return texts.length
 }
 
-async function requestOllama(prompt: string) {
-  const baseUrl = (env.OLLAMA_BASE_URL || DEFAULT_OLLAMA_URL).replace(/\/$/, "")
-  const model = env.OLLAMA_MODEL || DEFAULT_OLLAMA_MODEL
-  let response: Response
-  try {
-    response = await fetch(`${baseUrl}/api/chat`, {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({
-        model,
-        stream: false,
-        format: "json",
-        messages: [{ role: "user", content: prompt }],
-      }),
-      signal: AbortSignal.timeout(REQUEST_MS),
-    })
-  } catch {
-    throw new AppError("Ollama is not reachable. Start it, then try again.", "VALIDATION")
-  }
-  if (!response.ok) {
-    throw new AppError(
-      `Ollama could not run ${model}. Pull that model, or set OLLAMA_MODEL.`,
-      "VALIDATION"
-    )
-  }
-  const body = (await response.json()) as OllamaChatResponse
-  const content = body.message?.content
-  if (!content) throw new AppError("Ollama returned an empty draft.", "VALIDATION")
-  return content
+/** Run the midnight refresh now, for every pack. */
+export async function refreshQuestionsNow(input: { actorRole: string; actorId: string }) {
+  assertStaffRole(input.actorRole)
+  await assertRateLimit(`questions-refresh:${input.actorId}`, 3, 60 * 60 * 1000)
+  return refreshDailyQuestions({ actorId: input.actorId })
 }

@@ -14,7 +14,7 @@ import { AvatarPicker } from "@/components/avatars/avatar-picker"
 import { PasswordField } from "@/components/forms/password-field"
 
 const fieldClass =
-  "h-11 w-full rounded-lg border border-border bg-background px-3 text-sm outline-none focus:border-[#9b7bff]"
+  "h-11 w-full rounded-lg border border-border bg-background px-3 text-sm outline-none focus:border-primary"
 
 function Message({ state }: { state: ActionState }) {
   if (!state?.error && !state?.success) return null
@@ -51,14 +51,14 @@ export function LoginForm({ next, reset }: { next?: string; reset?: boolean }) {
         Password
         <PasswordField name="password" autoComplete="current-password" />
       </label>
-      <button disabled={pending} className="h-11 rounded-lg bg-[#ff6b8a] font-semibold text-white disabled:opacity-60">
+      <button disabled={pending} className="h-11 rounded-lg bg-primary font-semibold text-primary-foreground disabled:opacity-60">
         {pending ? "Signing in…" : "Log in"}
       </button>
       <div className="flex justify-between text-sm">
-        <Link href="/forgot-password" className="text-[#9b7bff]">
+        <Link href="/forgot-password" className="text-primary">
           Forgot password?
         </Link>
-        <Link href="/register" className="text-[#9b7bff]">
+        <Link href="/register" className="text-primary">
           Create account
         </Link>
       </div>
@@ -91,10 +91,10 @@ export function RegisterForm({ next, choices }: { next?: string; choices: string
         <PasswordField name="confirm" autoComplete="new-password" minLength={8} />
       </label>
       <AvatarPicker value={avatar} choices={choices} onChange={setAvatar} />
-      <button disabled={pending} className="h-11 rounded-lg bg-[#ff6b8a] font-semibold text-white disabled:opacity-60">
+      <button disabled={pending} className="h-11 rounded-lg bg-primary font-semibold text-primary-foreground disabled:opacity-60">
         {pending ? "Creating account…" : "Create account and play"}
       </button>
-      <Link href="/login" className="text-sm text-[#9b7bff]">
+      <Link href="/login" className="text-sm text-primary">
         Already have an account? Log in
       </Link>
     </form>
@@ -110,7 +110,7 @@ export function ForgotForm() {
         Email
         <input name="email" type="email" required autoComplete="email" className={fieldClass} />
       </label>
-      <button disabled={pending} className="h-11 rounded-lg bg-[#ff6b8a] font-semibold text-white disabled:opacity-60">
+      <button disabled={pending} className="h-11 rounded-lg bg-primary font-semibold text-primary-foreground disabled:opacity-60">
         {pending ? "Sending…" : "Send reset link"}
       </button>
     </form>
@@ -131,7 +131,7 @@ export function ResetForm({ token }: { token: string }) {
         Confirm password
         <PasswordField name="confirm" autoComplete="new-password" minLength={8} />
       </label>
-      <button disabled={pending} className="h-11 rounded-lg bg-[#ff6b8a] font-semibold text-white disabled:opacity-60">
+      <button disabled={pending} className="h-11 rounded-lg bg-primary font-semibold text-primary-foreground disabled:opacity-60">
         {pending ? "Saving…" : "Update password"}
       </button>
     </form>

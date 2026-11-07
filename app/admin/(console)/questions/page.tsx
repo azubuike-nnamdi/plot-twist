@@ -1,6 +1,9 @@
 import { questionActiveAction } from "@/app/actions/admin"
-import { GenerateQuestionsForm, QuestionForm } from "@/components/admin/staff-forms"
+import { GenerateQuestionsForm, QuestionForm, RefreshQuestionsForm } from "@/components/admin/staff-forms"
 import { listCategories, listQuestions } from "@/features/admin/service"
+
+// The refresh button runs every pack through Ollama inside this request.
+export const maxDuration = 300
 
 export default async function QuestionsPage({
   searchParams,
@@ -28,8 +31,9 @@ export default async function QuestionsPage({
         <section className="rounded-[20px] border border-border bg-card p-5">
           <QuestionForm categories={categories} />
         </section>
-        <section className="rounded-[20px] border border-border bg-card p-5">
+        <section className="grid gap-6 rounded-[20px] border border-border bg-card p-5">
           <GenerateQuestionsForm categories={categories} />
+          <RefreshQuestionsForm />
         </section>
       </div>
       <ul className="grid gap-2">
@@ -41,6 +45,7 @@ export default async function QuestionsPage({
                 {question.category.name}
                 {question.isAdult ? " · 18+" : ""}
                 {question.isActive ? "" : " · inactive"}
+                {question.expiresAt ? " · Ollama, replaced at midnight UTC" : " · staff-written, permanent"}
               </span>
             </span>
             <form action={questionActiveAction.bind(null, question.id, !question.isActive)}>

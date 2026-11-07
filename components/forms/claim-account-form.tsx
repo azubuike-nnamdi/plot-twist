@@ -6,7 +6,7 @@ import Link from "next/link"
 import { claimAccountAction, type ActionState } from "@/app/actions/auth"
 
 const fieldClass =
-  "h-11 w-full rounded-lg border border-[#302d41] bg-[#100d1d] px-3 text-sm text-[#f6f6fa] outline-none focus:border-[#9b7bff]"
+  "h-11 w-full rounded-lg border border-line bg-background px-3 text-sm text-foreground outline-none focus:border-primary"
 
 function Message({ state }: { state: ActionState }) {
   if (!state?.error && !state?.success) return null
@@ -42,23 +42,23 @@ export function ClaimAccountForm({
       <input type="hidden" name="name" value={defaultName} />
       {code ? <input type="hidden" name="code" value={code} /> : null}
       {code ? <input type="hidden" name="next" value={`/room/${code}`} /> : null}
-      <label className="grid gap-1 text-sm font-medium text-[#f6f6fa]">
+      <label className="grid gap-1 text-sm font-medium text-foreground">
         Email
         <input name="email" type="email" required autoComplete="email" className={fieldClass} />
       </label>
-      <label className="grid gap-1 text-sm font-medium text-[#f6f6fa]">
+      <label className="grid gap-1 text-sm font-medium text-foreground">
         Username
         <input name="username" required minLength={3} maxLength={24} autoComplete="username" className={fieldClass} />
       </label>
-      <label className="grid gap-1 text-sm font-medium text-[#f6f6fa]">
+      <label className="grid gap-1 text-sm font-medium text-foreground">
         Password
         <input name="password" type="password" required minLength={8} autoComplete="new-password" className={fieldClass} />
       </label>
-      <label className="grid gap-1 text-sm font-medium text-[#f6f6fa]">
+      <label className="grid gap-1 text-sm font-medium text-foreground">
         Confirm password
         <input name="confirm" type="password" required minLength={8} autoComplete="new-password" className={fieldClass} />
       </label>
-      <button disabled={pending} className="h-11 rounded-lg bg-[#ff6b8a] font-semibold text-white disabled:opacity-60">
+      <button disabled={pending} className="h-11 rounded-lg bg-primary font-semibold text-primary-foreground disabled:opacity-60">
         {pending ? "Saving…" : "Save this name"}
       </button>
     </form>

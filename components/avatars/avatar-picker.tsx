@@ -36,8 +36,8 @@ export function AvatarPicker({
               className={cn(
                 "relative flex aspect-square cursor-pointer items-center justify-center rounded-2xl border",
                 selected
-                  ? "border-[#c4b5fd] bg-[#9b7bff]/15"
-                  : "border-white/10 bg-[#161222] hover:border-white/25"
+                  ? "border-brand-soft bg-primary/15"
+                  : "border-white/10 bg-surface hover:border-white/25"
               )}
             >
               <input
@@ -51,7 +51,7 @@ export function AvatarPicker({
               />
               <AvatarImage avatar={seed} alt="" className="size-[70%]" />
               {selected ? (
-                <span className="absolute top-2 right-2 flex size-5 items-center justify-center rounded-full bg-[#c4b5fd] text-[#24143a]">
+                <span className="absolute top-2 right-2 flex size-5 items-center justify-center rounded-full bg-brand-soft text-primary-foreground">
                   <Check aria-hidden className="size-3" />
                 </span>
               ) : null}
@@ -62,7 +62,7 @@ export function AvatarPicker({
       <button
         type="button"
         onClick={handleRandomize}
-        className="inline-flex h-10 items-center justify-center gap-2 text-sm font-semibold text-[#c4b5fd]"
+        className="inline-flex h-10 items-center justify-center gap-2 text-sm font-semibold text-brand-soft"
       >
         <Shuffle aria-hidden className="size-4" />
         Randomize

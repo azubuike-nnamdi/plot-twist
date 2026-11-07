@@ -15,7 +15,7 @@ export default function ErrorPage({
       <button
         type="button"
         onClick={reset}
-        className="mt-6 h-11 rounded-lg bg-[#ff6b8a] px-5 font-semibold text-white"
+        className="mt-6 h-11 rounded-lg bg-primary px-5 font-semibold text-primary-foreground"
       >
         Try again
       </button>

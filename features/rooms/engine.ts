@@ -8,7 +8,7 @@ import { answerError } from "@/features/answers/rules"
 import { guessError } from "@/features/guesses/rules"
 import { createRoomCode, formatRoomCode } from "@/features/rooms/codes"
 import { adultPackError } from "@/features/rooms/audience"
-import { choosePrompt, normalizePrompt, PROMPT_MAX_LENGTH, PROMPT_MIN_LENGTH } from "@/features/rooms/prompts"
+import { choosePrompt } from "@/features/rooms/prompts"
 import {
   canTransitionRoom,
   canTransitionRound,
@@ -65,11 +65,6 @@ const roomInclude = Prisma.validator<Prisma.RoomInclude>()({
       roomPrompt: { include: { player: { select: { displayName: true } } } },
       reactions: true,
     },
-  },
-  prompts: {
-    where: { status: { in: ["PENDING", "ACCEPTED"] } },
-    include: { player: { select: { displayName: true, userId: true } } },
-    orderBy: { createdAt: "asc" },
   },
 })
 
@@ -195,10 +190,6 @@ function roomHistory(db: Tx | PrismaClient, roomId: string) {
 type RoomHistory = Awaited<ReturnType<typeof roomHistory>>
 
 async function drawPrompt(tx: Tx, room: LoadedRoom, exclude: string[]) {
-  const playerPrompts = await tx.roomPrompt.findMany({
-    where: { roomId: room.id, status: "ACCEPTED" },
-    select: { id: true },
-  })
   const categoryIds = room.categories.map((item) => item.categoryId)
   const packQuestions = await tx.question.findMany({
     where: {
@@ -209,7 +200,7 @@ async function drawPrompt(tx: Tx, room: LoadedRoom, exclude: string[]) {
         ? { isAdult: false, category: { isAdult: false } }
         : {}),
     },
-    select: { id: true },
+    select: { id: true, text: true, category: { select: { name: true } } },
   })
   const userIds = activePlayers(room).map((player) => player.userId)
   const seenRows =
@@ -227,7 +218,6 @@ async function drawPrompt(tx: Tx, room: LoadedRoom, exclude: string[]) {
   )
   const drawn = choosePrompt(
     {
-      playerPromptIds: playerPrompts.map((prompt) => prompt.id),
       unseenPackIds: packQuestions
         .filter((question) => !seenIds.has(question.id))
         .map((question) => question.id),
@@ -238,14 +228,14 @@ async function drawPrompt(tx: Tx, room: LoadedRoom, exclude: string[]) {
     randomInt
   )
   if (!drawn) return null
-  if (drawn.kind === "player") {
-    await tx.roomPrompt.update({
-      where: { id: drawn.id },
-      data: { status: "USED" },
-    })
-    return { questionId: null, roomPromptId: drawn.id, isReplay: false }
+  const picked = packQuestions.find((question) => question.id === drawn.id)
+  if (!picked) return null
+  return {
+    questionId: picked.id,
+    questionText: picked.text,
+    questionPack: picked.category.name,
+    isReplay: drawn.isReplay,
   }
-  return { questionId: drawn.id, roomPromptId: null, isReplay: drawn.isReplay }
 }
 
 async function scoreRound(tx: Tx, round: LoadedRoom["rounds"][number]) {
@@ -377,13 +367,6 @@ function toView(
     answerSeconds: room.answerTimer,
     guessingSeconds: room.guessingTimer,
     categories: room.categories.map((item) => item.category.name),
-    prompts: room.prompts.map((prompt) => ({
-      id: prompt.id,
-      text: prompt.text,
-      authorName: prompt.player.displayName,
-      status: prompt.status === "PENDING" ? ("PENDING" as const) : ("ACCEPTED" as const),
-      isYours: prompt.player.userId === viewerUserId,
-    })),
     players: room.players.map((player) => ({
       id: player.id,
       userId: player.userId,
@@ -397,8 +380,8 @@ function toView(
       ? {
         status: round.status,
         deadlineAt: round.phaseDeadlineAt?.toISOString() ?? null,
-        question: round.roomPrompt?.text ?? round.question?.text ?? "",
-        categoryName: round.question?.category.name ?? "Player question",
+        question: round.questionText ?? round.roomPrompt?.text ?? round.question?.text ?? "",
+        categoryName: round.questionPack ?? round.question?.category.name ?? "Room question",
         askedBy: round.roomPrompt?.player.displayName ?? null,
         isReplay: round.isReplay,
         answers: round.answers.map((answer) => ({
@@ -788,8 +771,9 @@ export async function startGame(hostId: string, code: string) {
       data: {
         roomId: room.id,
         roundNumber: 1,
-        questionId: drawn.questionId ?? undefined,
-        roomPromptId: drawn.roomPromptId ?? undefined,
+        questionId: drawn.questionId,
+        questionText: drawn.questionText,
+        questionPack: drawn.questionPack,
         isReplay: drawn.isReplay,
         status: "ANSWERING",
         phaseDeadlineAt: new Date(now.getTime() + room.answerTimer * 1000),
@@ -929,8 +913,9 @@ export async function nextRound(hostId: string, code: string) {
       data: {
         roomId: room.id,
         roundNumber: room.currentRound + 1,
-        questionId: drawn.questionId ?? undefined,
-        roomPromptId: drawn.roomPromptId ?? undefined,
+        questionId: drawn.questionId,
+        questionText: drawn.questionText,
+        questionPack: drawn.questionPack,
         isReplay: drawn.isReplay,
         status: "ANSWERING",
         phaseDeadlineAt: new Date(now.getTime() + room.answerTimer * 1000),
@@ -960,7 +945,9 @@ export async function skipQuestion(hostId: string, code: string) {
       where: { id: round.id },
       data: {
         questionId: drawn.questionId,
-        roomPromptId: drawn.roomPromptId,
+        questionText: drawn.questionText,
+        questionPack: drawn.questionPack,
+        roomPromptId: null,
         isReplay: drawn.isReplay,
         phaseDeadlineAt: new Date(Date.now() + room.answerTimer * 1000),
       },
@@ -1147,72 +1134,6 @@ export async function rematch(hostId: string, code: string) {
       }
     }
     throw new AppError("Could not start a rematch. Try again.", "CONFLICT")
-  })
-}
-
-export async function submitRoomPrompt(userId: string, code: string, text: string) {
-  const prompt = normalizePrompt(text)
-  if (prompt.length < PROMPT_MIN_LENGTH || prompt.length > PROMPT_MAX_LENGTH) {
-    throw new AppError(
-      `Player questions are ${PROMPT_MIN_LENGTH} to ${PROMPT_MAX_LENGTH} characters.`,
-      "VALIDATION"
-    )
-  }
-  const roomId = await roomIdForCode(code)
-  await runRoomTransaction(async (tx) => {
-    await lockRoom(tx, roomId)
-    const room = await loadRoom(tx, roomId)
-    if (room.status !== "WAITING") {
-      throw new AppError("Questions can be added before the game starts.", "CONFLICT")
-    }
-    const player = activePlayers(room).find((item) => item.userId === userId)
-    if (!player) throw new AppError("Join this room before asking a question.", "FORBIDDEN")
-    const existing = room.prompts.find((item) => item.player.userId === userId)
-    const status =
-      room.cleanFilter && player.userId !== room.hostId ? "PENDING" : "ACCEPTED"
-    if (existing) {
-      await tx.roomPrompt.update({
-        where: { id: existing.id },
-        data: { text: prompt, status },
-      })
-      return
-    }
-    await tx.roomPrompt.create({
-      data: { roomId: room.id, playerId: player.id, text: prompt, status },
-    })
-  })
-}
-
-export async function reviewRoomPrompt(input: {
-  actorId: string
-  code: string
-  promptId: string
-  decision: "ACCEPTED" | "REMOVED"
-}) {
-  const roomId = await roomIdForCode(input.code)
-  await runRoomTransaction(async (tx) => {
-    await lockRoom(tx, roomId)
-    const room = await loadRoom(tx, roomId)
-    if (room.status !== "WAITING") {
-      throw new AppError("Player questions are locked once the game starts.", "CONFLICT")
-    }
-    const prompt = room.prompts.find((item) => item.id === input.promptId)
-    if (!prompt) throw new AppError("That question is no longer in the pile.", "NOT_FOUND")
-    const isHost = input.actorId === room.hostId
-    const isAuthor = prompt.player.userId === input.actorId
-    if (input.decision === "ACCEPTED" && !isHost) {
-      throw new AppError("Only the host can approve a question.", "FORBIDDEN")
-    }
-    if (!isHost && !isAuthor) {
-      throw new AppError("Only the host can remove that question.", "FORBIDDEN")
-    }
-    if (input.decision === "ACCEPTED" && prompt.status !== "PENDING") {
-      throw new AppError("That question is already in the pile.", "CONFLICT")
-    }
-    await tx.roomPrompt.update({
-      where: { id: prompt.id },
-      data: { status: input.decision },
-    })
   })
 }
 
