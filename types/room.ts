@@ -51,14 +51,6 @@ export type LeaderRow = {
   title: string
 }
 
-export type RoomPromptView = {
-  id: string
-  text: string
-  authorName: string
-  status: "PENDING" | "ACCEPTED"
-  isYours: boolean
-}
-
 export type RoomView = {
   code: string
   name: string
@@ -79,7 +71,6 @@ export type RoomView = {
   categories: string[]
   categoryIds: string[]
   cleanFilter: boolean
-  prompts: RoomPromptView[]
   askedBy: string | null
   isReplay: boolean
   players: RoomPlayerView[]
