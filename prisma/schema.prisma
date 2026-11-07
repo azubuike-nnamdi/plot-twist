@@ -144,11 +144,15 @@ model Question {
   difficulty String   @default("NORMAL")
   isActive   Boolean  @default(true)
   isAdult    Boolean  @default(false)
+  // Set on nightly Ollama batches. A batch is deleted once the next night's
+  // batch for its pack is saved. Null means a staff-written question that stays.
+  expiresAt  DateTime?
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
   rounds     Round[]
 
   @@index([categoryId, isActive])
+  @@index([expiresAt])
 }
 
 model Room {
@@ -220,7 +224,11 @@ model Round {
   room            Room        @relation(fields: [roomId], references: [id], onDelete: Cascade)
   roundNumber     Int
   questionId      String?
-  question        Question?   @relation(fields: [questionId], references: [id], onDelete: Restrict)
+  question        Question?   @relation(fields: [questionId], references: [id], onDelete: SetNull)
+  // Copied when the round is dealt, so the round still reads correctly after
+  // the nightly refresh deletes the question it came from.
+  questionText    String?
+  questionPack    String?
   roomPromptId    String?     @unique
   roomPrompt      RoomPrompt? @relation(fields: [roomPromptId], references: [id], onDelete: Restrict)
   isReplay        Boolean     @default(false)
@@ -352,4 +360,13 @@ model RateLimit {
   lastRequest BigInt
 
   @@index([lastRequest])
+}
+
+// Hashes of every generated question, so a new night's batch never repeats
+// one from recent nights. Pruned after 90 days.
+model QuestionFingerprint {
+  hash      String   @id
+  createdAt DateTime @default(now())
+
+  @@index([createdAt])
 }
