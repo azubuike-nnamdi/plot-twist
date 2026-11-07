@@ -18,7 +18,7 @@ export default async function LoginPage({
       <SiteHeader />
       <main className="mx-auto max-w-md px-4 py-12">
         <section className="rounded-[20px] border border-border bg-card p-6">
-          <p className="text-xs font-semibold tracking-[0.16em] text-[#9b7bff] uppercase">
+          <p className="text-xs font-semibold tracking-[0.16em] text-primary uppercase">
             Player pass
           </p>
           <h1 className="font-display mt-2 text-3xl font-bold">Welcome back</h1>
