@@ -15,7 +15,7 @@ import { PasswordField } from "@/components/forms/password-field"
 import { AVATAR_MAX_BYTES, avatarSrc, isUploadAvatar } from "@/lib/avatars"
 
 const fieldClass =
-  "h-11 w-full rounded-lg border border-border bg-background px-3 text-sm outline-none focus:border-[#9b7bff]"
+  "h-11 w-full rounded-lg border border-border bg-background px-3 text-sm outline-none focus:border-primary"
 const PHOTO_ERROR = "Use a PNG, JPEG, or JPG image of 1 MB or less."
 
 function Message({ state }: { state: ActionState }) {
@@ -98,7 +98,7 @@ function ProfileFields({
           <span
             role="img"
             aria-label="Selected profile photo"
-            className="size-16 rounded-full bg-[#221c33] bg-cover bg-center"
+            className="size-16 rounded-full bg-surface-2 bg-cover bg-center"
             style={{ backgroundImage: `url("${photoSrc}")` }}
           />
           <p className="text-sm text-muted-foreground">This photo is your current profile picture.</p>
@@ -113,7 +113,7 @@ function ProfileFields({
           type="file"
           accept="image/png,image/jpeg,.png,.jpg,.jpeg"
           onChange={handlePhoto}
-          className="block w-full text-sm text-muted-foreground file:mr-3 file:h-10 file:rounded-lg file:border-0 file:bg-[#9b7bff] file:px-3 file:font-semibold file:text-[#100d1d]"
+          className="block w-full text-sm text-muted-foreground file:mr-3 file:h-10 file:rounded-lg file:border-0 file:bg-primary file:px-3 file:font-semibold file:text-primary-foreground"
         />
         <span className="text-xs font-normal text-muted-foreground">PNG, JPEG, or JPG, up to 1 MB.</span>
       </label>
@@ -151,7 +151,7 @@ export function ProfileForm({
         initialAvatar={state?.avatar ?? initialAvatar}
         choices={choices}
       />
-      <button disabled={pending} className="h-11 rounded-lg bg-[#ff6b8a] font-semibold text-white disabled:opacity-60">
+      <button disabled={pending} className="h-11 rounded-lg bg-primary font-semibold text-primary-foreground disabled:opacity-60">
         {pending ? "Saving…" : "Save profile"}
       </button>
     </form>
@@ -175,7 +175,7 @@ export function PasswordForm() {
         Confirm new password
         <PasswordField name="confirm" autoComplete="new-password" minLength={8} />
       </label>
-      <button disabled={pending} className="h-11 rounded-lg bg-[#9b7bff] font-semibold text-white disabled:opacity-60">
+      <button disabled={pending} className="h-11 rounded-lg bg-primary font-semibold text-primary-foreground disabled:opacity-60">
         Update password
       </button>
     </form>
