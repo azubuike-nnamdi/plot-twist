@@ -19,7 +19,7 @@ export function AvatarImage({
   const src = failedAvatar === avatar ? avatarSrc("cipher") : avatarSrc(avatar)
 
   return (
-    <span className={cn("relative block shrink-0 overflow-hidden rounded-full bg-[#221c33]", className)}>
+    <span className={cn("relative block shrink-0 overflow-hidden rounded-full bg-surface-2", className)}>
       <Image
         src={src}
         alt={alt}
