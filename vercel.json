@@ -1,6 +1,12 @@
 {
-  "regions": ["cle1"],
+  "regions": [
+    "cle1"
+  ],
   "crons": [
+    {
+      "path": "/api/cron/questions",
+      "schedule": "0 0 * * *"
+    },
     {
       "path": "/api/cron/cleanup",
       "schedule": "0 4 * * *"
