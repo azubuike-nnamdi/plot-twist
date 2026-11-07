@@ -4,7 +4,7 @@ import { Eye, EyeOff } from "lucide-react"
 import { useState } from "react"
 
 const fieldClass =
-  "h-11 w-full rounded-lg border border-border bg-background px-3 pr-11 text-sm outline-none focus:border-[#9b7bff]"
+  "h-11 w-full rounded-lg border border-border bg-background px-3 pr-11 text-sm outline-none focus:border-primary"
 
 export function PasswordField({
   name,
