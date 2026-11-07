@@ -16,6 +16,8 @@ export const env = readServerEnv({
   CRON_SECRET: process.env.CRON_SECRET,
   OLLAMA_BASE_URL: process.env.OLLAMA_BASE_URL,
   OLLAMA_MODEL: process.env.OLLAMA_MODEL,
+  OLLAMA_API_KEY: process.env.OLLAMA_API_KEY,
+  QUESTIONS_PER_PACK: process.env.QUESTIONS_PER_PACK,
   PUSHER_APP_ID: process.env.PUSHER_APP_ID,
   PUSHER_KEY: process.env.PUSHER_KEY,
   PUSHER_SECRET: process.env.PUSHER_SECRET,
