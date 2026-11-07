@@ -72,18 +72,18 @@ export function LobbySettings({
   }
 
   return (
-    <details className="rounded-2xl border border-[#302d41] bg-[#100d1d] p-4">
-      <summary className="cursor-pointer text-sm font-semibold text-[#f6f6fa]">
+    <details className="rounded-2xl border border-line bg-background p-4">
+      <summary className="cursor-pointer text-sm font-semibold text-foreground">
         Room setup · {view.totalRounds} rounds · about {estimateSessionMinutes(view.totalRounds, view.answerSeconds)} min
       </summary>
       <form action={action} className="mt-4 grid gap-4">
         <Message state={state} />
         <input type="hidden" name="code" value={view.code} />
         <fieldset className="grid gap-2">
-          <legend className="text-sm font-medium text-[#f6f6fa]">Rounds</legend>
+          <legend className="text-sm font-medium text-foreground">Rounds</legend>
           <div className="flex flex-wrap gap-2">
             {ROUND_CHOICES.map((choice) => (
-              <label key={choice} className="rounded-lg border border-[#302d41] px-3 py-2 text-sm text-[#f6f6fa]">
+              <label key={choice} className="rounded-lg border border-line px-3 py-2 text-sm text-foreground">
                 <input
                   type="radio"
                   name="totalRounds"
@@ -98,10 +98,10 @@ export function LobbySettings({
           </div>
         </fieldset>
         <fieldset className="grid gap-2">
-          <legend className="text-sm font-medium text-[#f6f6fa]">Players</legend>
+          <legend className="text-sm font-medium text-foreground">Players</legend>
           <div className="flex flex-wrap gap-2">
             {CAPACITY_CHOICES.map((choice) => (
-              <label key={choice} className="rounded-lg border border-[#302d41] px-3 py-2 text-sm text-[#f6f6fa]">
+              <label key={choice} className="rounded-lg border border-line px-3 py-2 text-sm text-foreground">
                 <input
                   type="radio"
                   name="maxPlayers"
@@ -116,12 +116,12 @@ export function LobbySettings({
           </div>
         </fieldset>
         <fieldset className="grid gap-2">
-          <legend className="text-sm font-medium text-[#f6f6fa]">
+          <legend className="text-sm font-medium text-foreground">
             Answer timer · guess {guessTimerFor(answerTimer)}s · about {minutes} min
           </legend>
           <div className="flex flex-wrap gap-2">
             {ANSWER_TIMERS.map((choice) => (
-              <label key={choice} className="rounded-lg border border-[#302d41] px-3 py-2 text-sm text-[#f6f6fa]">
+              <label key={choice} className="rounded-lg border border-line px-3 py-2 text-sm text-foreground">
                 <input
                   type="radio"
                   name="answerTimer"
@@ -136,11 +136,11 @@ export function LobbySettings({
           </div>
         </fieldset>
         <fieldset className="grid gap-2">
-          <legend className="text-sm font-medium text-[#f6f6fa]">Prompt packs</legend>
+          <legend className="text-sm font-medium text-foreground">Prompt packs</legend>
           {packs.map((pack) => {
             const blocked = pack.isAdult && adultLocked
             return (
-              <label key={pack.id} className={`flex items-center gap-2 text-sm ${blocked ? "text-[#6f6c7b]" : "text-[#f6f6fa]"}`}>
+              <label key={pack.id} className={`flex items-center gap-2 text-sm ${blocked ? "text-[#6f6c7b]" : "text-foreground"}`}>
                 <input
                   type="checkbox"
                   name="categoryId"
@@ -150,12 +150,12 @@ export function LobbySettings({
                   onChange={() => handleTogglePack(pack.id, pack.isAdult)}
                 />
                 {pack.name}
-                <span className="text-[#afadba]">{pack.cardCount} cards</span>
+                <span className="text-muted-foreground">{pack.cardCount} cards</span>
               </label>
             )
           })}
         </fieldset>
-        <label className="flex items-start gap-2 text-sm text-[#f6f6fa]">
+        <label className="flex items-start gap-2 text-sm text-foreground">
           <input
             type="checkbox"
             name="adultConfirmed"
@@ -165,12 +165,12 @@ export function LobbySettings({
           />
           <span>
             This room is 18+
-            <span className="mt-1 block text-xs text-[#afadba]">
+            <span className="mt-1 block text-xs text-muted-foreground">
               Required before an adult pack can be selected.
             </span>
           </span>
         </label>
-        <label className="flex items-center gap-2 text-sm text-[#f6f6fa]">
+        <label className="flex items-center gap-2 text-sm text-foreground">
           <input
             type="checkbox"
             name="cleanFilter"
@@ -179,7 +179,7 @@ export function LobbySettings({
           />
           Clean filter
         </label>
-        <button disabled={pending} className="h-11 rounded-xl bg-[#9b7bff] font-semibold text-[#100d1d] disabled:opacity-60">
+        <button disabled={pending} className="h-11 rounded-xl bg-primary font-semibold text-primary-foreground disabled:opacity-60">
           {pending ? "Saving…" : "Save setup"}
         </button>
       </form>
