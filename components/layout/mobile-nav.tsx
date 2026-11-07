@@ -6,7 +6,7 @@ import { useEffect, useState } from "react"
 
 import { logoutAction } from "@/app/actions/auth"
 
-const menuLink = "flex min-h-11 items-center rounded-lg px-3 text-sm text-[#f6f6fa] hover:bg-white/10"
+const menuLink = "flex min-h-11 items-center rounded-lg px-3 text-sm text-foreground hover:bg-white/10"
 
 export function MobileNav({
   loggedIn,
@@ -44,10 +44,10 @@ export function MobileNav({
           <button
             type="button"
             aria-label="Close menu"
-            className="absolute inset-0 bg-[#1b1730]/40"
+            className="absolute inset-0 bg-surface-2/40"
             onClick={handleClose}
           />
-          <nav className="absolute inset-y-0 left-0 flex w-[min(18rem,calc(100vw-3rem))] flex-col bg-[#1b1730] p-4 text-white">
+          <nav className="absolute inset-y-0 left-0 flex w-[min(18rem,calc(100vw-3rem))] flex-col bg-surface-2 p-4 text-white">
             <div className="flex items-center justify-between">
               <p className="font-display text-lg font-bold">PlotTwist</p>
               <button
@@ -69,7 +69,7 @@ export function MobileNav({
                     Account
                   </Link>
                   <form action={logoutAction}>
-                    <button className="min-h-11 w-full rounded-lg px-3 text-left text-sm text-[#f6f6fa] hover:bg-white/10">
+                    <button className="min-h-11 w-full rounded-lg px-3 text-left text-sm text-foreground hover:bg-white/10">
                       Log out
                     </button>
                   </form>
