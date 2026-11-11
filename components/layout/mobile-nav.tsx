@@ -5,14 +5,12 @@ import Link from "next/link"
 import { useEffect, useState } from "react"
 
 import { logoutAction } from "@/app/actions/auth"
+import { HowToPlayButton } from "@/components/how-to-play/how-to-play-button"
 
-const menuLink = "flex min-h-11 items-center rounded-lg px-3 text-sm text-foreground hover:bg-white/10"
+const menuLink =
+  "flex min-h-11 items-center rounded-lg px-3 text-sm text-foreground hover:bg-white/10"
 
-export function MobileNav({
-  loggedIn,
-}: {
-  loggedIn: boolean
-}) {
+export function MobileNav({ loggedIn }: { loggedIn: boolean }) {
   const [isOpen, setIsOpen] = useState(false)
 
   useEffect(() => {
@@ -40,7 +38,12 @@ export function MobileNav({
         <PanelLeft aria-hidden className="size-5" />
       </button>
       {isOpen ? (
-        <div className="fixed inset-0 z-50" role="dialog" aria-modal="true" aria-label="Menu">
+        <div
+          className="fixed inset-0 z-50"
+          role="dialog"
+          aria-modal="true"
+          aria-label="Menu"
+        >
           <button
             type="button"
             aria-label="Close menu"
@@ -60,12 +63,19 @@ export function MobileNav({
               </button>
             </div>
             <div className="mt-6 grid gap-1">
-              <Link href="/how-to-play" className={menuLink} onClick={handleClose}>
+              <HowToPlayButton
+                className={`${menuLink} w-full text-left`}
+                onOpen={handleClose}
+              >
                 How to Play
-              </Link>
+              </HowToPlayButton>
               {loggedIn ? (
                 <>
-                  <Link href="/account" className={menuLink} onClick={handleClose}>
+                  <Link
+                    href="/account"
+                    className={menuLink}
+                    onClick={handleClose}
+                  >
                     Account
                   </Link>
                   <form action={logoutAction}>
@@ -76,7 +86,11 @@ export function MobileNav({
                 </>
               ) : (
                 <>
-                  <Link href="/login" className={menuLink} onClick={handleClose}>
+                  <Link
+                    href="/login"
+                    className={menuLink}
+                    onClick={handleClose}
+                  >
                     Log in
                   </Link>
                   <Link href="/join" className={menuLink} onClick={handleClose}>

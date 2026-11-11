@@ -43,6 +43,12 @@ const nextConfig: NextConfig = {
       bodySizeLimit: "2mb",
     },
   },
+  async redirects() {
+    // How to play is now a video walkthrough in a modal on the home page.
+    return [
+      { source: "/how-to-play", destination: "/#how-to-play", permanent: true },
+    ]
+  },
   async headers() {
     return [{ source: "/:path*", headers: securityHeaders }]
   },
