@@ -46,7 +46,11 @@ export function AccountLink({
           : "flex max-w-52 items-center gap-2 rounded-lg px-3 py-2 text-sm text-foreground hover:bg-white/10"
       }
     >
-      <AvatarImage avatar={accountAvatar(me.avatar)} alt="" className="size-8 shrink-0" />
+      <AvatarImage
+        avatar={accountAvatar(me.avatar)}
+        alt=""
+        className="size-8 shrink-0"
+      />
       <span className="truncate">{label}</span>
     </Link>
   )
