@@ -5,6 +5,7 @@
 @custom-variant dark (&:is(.dark *));
 
 @theme inline {
+    --ease-out-soft: cubic-bezier(0.22, 1, 0.36, 1);
     --font-heading: var(--font-display-family), var(--font-sans);
     --font-sans: var(--font-sans);
     --font-display: var(--font-display-family), var(--font-sans);
@@ -195,6 +196,21 @@
   }
   ::selection {
     background: color-mix(in oklab, var(--primary) 40%, transparent);
+  }
+}
+
+/* Landing: the last line of the hero headline slowly sweeps purple to pink. */
+.landing-shimmer {
+  background: linear-gradient(90deg, var(--primary), var(--twist), var(--primary));
+  background-size: 200% auto;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  animation: landing-shimmer 6s linear infinite;
+}
+@keyframes landing-shimmer {
+  to {
+    background-position: 200% center;
   }
 }
 

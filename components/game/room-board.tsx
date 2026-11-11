@@ -32,6 +32,8 @@ import { ClaimAccountForm } from "@/components/forms/claim-account-form"
 import type { PromptPack } from "@/components/forms/create-room-form"
 import { useGuessStore } from "@/components/game/guess-store"
 import { LobbySettings } from "@/components/game/lobby-settings"
+import { useGameSounds } from "@/components/audio/use-game-sounds"
+import { playSfx, setMusicUrgency } from "@/lib/audio/engine"
 import { useRoomChannel } from "@/components/game/use-room-channel"
 import {
   roomQueryKey,
@@ -69,6 +71,7 @@ function RoomClock({
   const anchor = useRef<ClockAnchor | null>(null)
   const onElapsedRef = useRef(onElapsed)
   const firedDeadline = useRef<string | null>(null)
+  const lastTick = useRef<number | null>(null)
   const [clock, setClock] = useState<{
     deadlineAt: string
     label: string
@@ -97,6 +100,18 @@ function RoomClock({
       const next = formatClock(left)
       // Quarter-second steps keep the bar smooth without a render every frame.
       const step = Math.ceil(left / 250) * 250
+      // The music tightens over the last 15 seconds.
+      setMusicUrgency(left < 15_000 ? 1 - left / 15_000 : 0)
+      // Tick once per second for the last few seconds.
+      const second = Math.ceil(left / 1000)
+      if (
+        second > 0 &&
+        second <= URGENT_SECONDS &&
+        second !== lastTick.current
+      ) {
+        lastTick.current = second
+        playSfx("tick")
+      }
       setClock((previous) => {
         if (previous?.deadlineAt === shownDeadline && previous.left === step)
           return previous
@@ -112,6 +127,7 @@ function RoomClock({
     return () => {
       window.clearTimeout(starter)
       window.clearInterval(timer)
+      setMusicUrgency(0)
     }
   }, [deadlineAt, serverNow])
   const current = clock?.deadlineAt === deadlineAt ? clock : null
@@ -132,15 +148,10 @@ function RoomClock({
       >
         {current.label}
       </p>
-      <div
-        aria-hidden
-        className="h-1.5 overflow-hidden rounded-full bg-muted"
-      >
+      <div aria-hidden className="h-1.5 overflow-hidden rounded-full bg-muted">
         <div
           className={`h-full rounded-full transition-[width] duration-300 ease-linear ${
-            urgent
-              ? "bg-twist"
-              : "bg-linear-to-r from-primary to-gold"
+            urgent ? "bg-twist" : "bg-linear-to-r from-primary to-gold"
           }`}
           style={{ width: `${percent}%` }}
         />
@@ -235,6 +246,7 @@ export function RoomBoard({
     retryDelay: 500,
   })
   const view = query.data
+  useGameSounds(view)
   const refetchRoom = query.refetch
   // Catch up on anything missed while the socket was down.
   useEffect(() => {
@@ -534,10 +546,7 @@ function Lobby({
           ) : null}
           {view.youAreHost ? (
             <p className="mt-4 flex gap-2 rounded-xl bg-background px-3 py-3 text-sm text-muted-foreground">
-              <Crown
-                aria-hidden
-                className="mt-0.5 size-4 shrink-0 text-gold"
-              />
+              <Crown aria-hidden className="mt-0.5 size-4 shrink-0 text-gold" />
               <span>
                 <span className="font-semibold text-foreground">
                   You are the room host.{" "}
@@ -1256,7 +1265,9 @@ function VoteChips({
       : "border-twist/25 bg-twist/10 text-twist-soft"
   return (
     <div className="flex flex-wrap items-center gap-1.5">
-      <span className="mr-1 text-xs font-semibold text-muted-foreground">{label}</span>
+      <span className="mr-1 text-xs font-semibold text-muted-foreground">
+        {label}
+      </span>
       {votes.map((vote) => (
         <span
           key={`${vote.displayName}-${vote.guessedName}`}
@@ -1390,7 +1401,9 @@ function ManagePlayers({ view }: { view: RoomView }) {
               className="size-8 shrink-0"
             />
             <span className="min-w-0 flex-1 wrap-break-word">
-              <span className="block text-foreground">{player.displayName}</span>
+              <span className="block text-foreground">
+                {player.displayName}
+              </span>
               <span className="mt-1 flex flex-wrap gap-1">
                 {player.isHost ? (
                   <span className="rounded-full bg-gold/15 px-2 py-0.5 text-[10px] font-semibold text-gold">
