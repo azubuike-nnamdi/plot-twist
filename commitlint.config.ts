@@ -1,5 +1,14 @@
+// Headers may start with a gitmoji (https://gitmoji.dev), e.g.
+// "✨ feat(landing): add the walkthrough". The emoji is optional.
 const config = {
   extends: ['@commitlint/config-conventional'],
+  parserPreset: {
+    parserOpts: {
+      headerPattern:
+        /^(?:(?:\p{Extended_Pictographic}|\p{Regional_Indicator})[\u{FE0F}\u{200D}\p{Extended_Pictographic}]*\s|:[a-z0-9_+-]+:\s)?(\w*)(?:\(([\w$.\-*/ ]*)\))?!?: (.*)$/u,
+      headerCorrespondence: ['type', 'scope', 'subject'],
+    },
+  },
   rules: {
     'body-leading-blank': [1, 'always'],
     'body-max-line-length': [2, 'always', 100],
